@@ -5,7 +5,7 @@ It allows younger family members to maintain medical profiles of elders, securel
 
 ---
 
-## 📌 Features
+## Features
 - **Multi-Profile Management** – Maintain multiple family health profiles in a single account.
 - **Offline-First Data Storage** – Access health data even without internet, syncs automatically when online.
 - **Secure Cloud Storage** – Store reports, prescriptions, and medical documents in Firebase.
@@ -15,7 +15,7 @@ It allows younger family members to maintain medical profiles of elders, securel
 
 ---
 
-## 🛠 Technology Stack
+## Technology Stack
 | Layer | Technology |
 |-------|------------|
 | **Frontend** | React Native (JavaScript) |
@@ -28,21 +28,21 @@ It allows younger family members to maintain medical profiles of elders, securel
 
 ---
 
-## 📱 Target Users
+## Target Users
 - Families in **rural** and **semi-urban** areas
 - **Elderly individuals** who require health monitoring
 - **Healthcare providers** for quick record access
 
 ---
 
-## ⚠ Key Challenges Addressed
+## Key Challenges Addressed
 - Poor internet connectivity  
 - Lack of consistent record maintenance  
 - Accessibility issues for elders  
 
 ---
 
-## 🚀 Solution Highlights
+## Solution Highlights
 - **Offline-first architecture**
 - **Profile switching** for family use
 - **Cloud sync** for easy sharing
