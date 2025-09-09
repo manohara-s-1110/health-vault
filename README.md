@@ -1,50 +1,59 @@
-# Welcome to your Expo app 👋
+# Health Vault – Family Health Record & Monitoring System
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**Health Vault** is a mobile-first, offline-enabled health record management app designed for families, particularly in rural and semi-urban areas.  
+It allows younger family members to maintain medical profiles of elders, securely store diagnostic reports, and share them with healthcare providers.
 
-## Get started
+---
 
-1. Install dependencies
+## Features
+- **Multi-Profile Management** – Maintain multiple family health profiles in a single account.
+- **Offline-First Data Storage** – Access health data even without internet, syncs automatically when online.
+- **Secure Cloud Storage** – Store reports, prescriptions, and medical documents in Firebase.
+- **Push Notifications** – Reminders for medication, check-ups, and appointments.
+- **Elder-Friendly UI** – Simple, icon-driven interface for easy navigation.
+- **Emergency Info Access** – Critical medical details available from the lock screen.
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## Technology Stack
+| Layer            | Technology |
+|------------------|------------|
+| **Frontend**     | React Native (Expo, JavaScript) |
+| **Backend**      | Node.js (Express.js) |
+| **Database**     | Firebase Firestore |
+| **Storage**      | Firebase Storage |
+| **Authentication** | Firebase Authentication |
+| **Notifications** | Firebase Cloud Messaging (FCM) |
+| **Deployment**   | Google Play Store |
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## Target Users
+- Families in **rural** and **semi-urban** areas  
+- **Elderly individuals** who require health monitoring  
+- **Healthcare providers** for quick record access  
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Key Challenges Addressed
+- Poor internet connectivity  
+- Lack of consistent record maintenance  
+- Accessibility issues for elders  
 
-## Get a fresh project
+---
 
-When you're ready, run:
+## Solution Highlights
+- **Offline-first architecture**  
+- **Profile switching** for family use  
+- **Cloud sync** for easy sharing  
+- **Minimalist, accessible UI**  
 
+---
+
+## 🚀 Development Setup
+
+This project was bootstrapped with [Expo](https://expo.dev).
+
+### 1. Install dependencies
 ```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+npm install
