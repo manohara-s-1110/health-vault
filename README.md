@@ -50,7 +50,7 @@ It allows younger family members to maintain medical profiles of elders, securel
 
 ---
 
-## 🚀 Development Setup
+##  Development Setup
 
 This project was bootstrapped with [Expo](https://expo.dev).
 
