@@ -1,32 +1,97 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
+// app/onboarding.js (formerly OnboardingScreen.js)
+import React from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import { router } from 'expo-router'; // Use expo-router's router
 
-export default function Onboarding() {
+export default function OnboardingScreen() { // No 'navigation' prop needed
   return (
-    <View style={styles.container}>
-      <Image source={require("../assets/logo.png")} style={styles.logo} />
-      <Text style={styles.title}>Health Vault</Text>
-      <Text style={styles.subtitle}>Let’s get started!</Text>
-      <Text style={styles.caption}>Login to stay healthy and fit</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.container}>
+        <Image source={require('../assets/vital_vault_logo.png')} style={styles.logo} />
+        <Text style={styles.appName}>Health Vault</Text>
+        <Text style={styles.title}>Let's get started!</Text>
+        <Text style={styles.subtitle}>Login to Stay healthy and fit</Text>
 
-      <TouchableOpacity style={styles.loginBtn}>
-        <Text style={styles.loginText}>Login</Text>
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.loginBtn} 
+          onPress={() => router.navigate('/signin')} // Use expo-router's navigate
+        >
+          <Text style={styles.loginText}>Login</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.signupBtn}>
-        <Text style={styles.signupText}>Sign Up</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity 
+          style={styles.signupBtn} 
+          onPress={() => router.navigate('/signup')} // Use expo-router's navigate
+        >
+          <Text style={styles.signupText}>Sign Up</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" },
-  logo: { width: 100, height: 100, marginBottom: 20 },
-  title: { fontSize: 26, fontWeight: "bold", color: "#1E3A8A" },
-  subtitle: { fontSize: 18, fontWeight: "600", marginTop: 10 },
-  caption: { fontSize: 14, color: "#6B7280", marginBottom: 30 },
-  loginBtn: { width: "70%", padding: 15, backgroundColor: "#2563EB", borderRadius: 25, alignItems: "center", marginBottom: 15 },
-  loginText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
-  signupBtn: { width: "70%", padding: 15, borderWidth: 2, borderColor: "#2563EB", borderRadius: 25, alignItems: "center" },
-  signupText: { color: "#2563EB", fontWeight: "bold", fontSize: 16 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+  },
+  logo: {
+    width: 80, 
+    height: 80,
+    marginBottom: 15,
+    resizeMode: 'contain',
+  },
+  appName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1A2F6B',
+    marginBottom: 30,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1E232C',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#8391A1',
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  loginBtn: {
+    width: '85%',
+    paddingVertical: 18,
+    backgroundColor: '#4A90E2', 
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  loginText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  signupBtn: {
+    width: '85%',
+    paddingVertical: 18,
+    borderWidth: 2,
+    borderColor: '#4A90E2', 
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF', 
+  },
+  signupText: {
+    color: '#4A90E2', 
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });

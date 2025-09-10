@@ -1,5 +1,15 @@
-import { Stack } from "expo-router";
+// app/_layout.js
+import { Stack } from 'expo-router';
+import React from 'react';
 
-export default function Layout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+export default function RootLayout() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="signin" />
+      <Stack.Screen name="signup" />
+      <Stack.Screen name="(tabs)" />
+    </Stack>
+  );
 }
