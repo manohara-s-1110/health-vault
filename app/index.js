@@ -7,7 +7,7 @@ export default function SplashScreen() { // No 'navigation' prop needed
   useEffect(() => {
     const timer = setTimeout(() => {
       router.replace('/onboarding'); // Use expo-router's replace
-    }, 2000); // 2 seconds
+    }, 3000); // 2 seconds
     return () => clearTimeout(timer);
   }, []); // Empty dependency array as router is stable
 

@@ -24,7 +24,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="medicine"
         options={{
-          title: 'Medicine',
+          title: 'Explore',
           tabBarIcon: ({ color }) => <MaterialCommunityIcons name="pill" color={color} size={24} />,
         }}
       />

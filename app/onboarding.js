@@ -9,7 +9,6 @@ export default function OnboardingScreen() { // No 'navigation' prop needed
       <StatusBar barStyle="dark-content" />
       <View style={styles.container}>
         <Image source={require('../assets/vital_vault_logo.png')} style={styles.logo} />
-        <Text style={styles.appName}>Health Vault</Text>
         <Text style={styles.title}>Let's get started!</Text>
         <Text style={styles.subtitle}>Login to Stay healthy and fit</Text>
 
@@ -44,16 +43,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   logo: {
-    width: 80, 
-    height: 80,
+    width: 120, 
+    height: 120,
     marginBottom: 15,
     resizeMode: 'contain',
-  },
-  appName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1A2F6B',
-    marginBottom: 30,
   },
   title: {
     fontSize: 22,
