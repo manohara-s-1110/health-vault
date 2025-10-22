@@ -1,0 +1,8 @@
+# Ignore the folder with all downloaded packages
+node_modules
+
+# Ignore the file containing our secret API keys
+.env
+
+# Ignore the Google Cloud credentials file
+gcp-credentials.json

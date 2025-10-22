@@ -7,8 +7,8 @@ export default function MedicineScreen() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.container}>
-        <Text style={styles.title}>Medicine Screen</Text>
-        <Text style={styles.subtitle}>Manage your prescriptions.</Text>
+        <Text style={styles.title}>Explore Screen</Text>
+        <Text style={styles.subtitle}>Explore nearby hospitals.</Text>
       </View>
     </SafeAreaView>
   );
