@@ -33,7 +33,7 @@ app.post('/process-report', upload.single('reportFile'), async (req, res) => {
             }
         });
         const operationUrl = initialResponse.headers['operation-location'];
-        
+
         let result;
         while (true) {
             await sleep(1000);
@@ -45,7 +45,7 @@ app.post('/process-report', upload.single('reportFile'), async (req, res) => {
         }
 
         if (result.status === "failed") throw new Error("Azure OCR process failed.");
-        
+
         let extractedText = "";
         if (result.analyzeResult && result.analyzeResult.readResults) {
             for (const page of result.analyzeResult.readResults) {
@@ -60,11 +60,10 @@ app.post('/process-report', upload.single('reportFile'), async (req, res) => {
 
         // --- STEP 2: SUMMARIZATION with Hugging Face (This is the new logic) ---
         console.log("Generating summary with Hugging Face...");
-        
+
         // The URL for a popular summarization model
-        const hfUrl = 'https://api-inference.huggingface.co/models/facebook/bart-large-cnn';
-        
-        const response = await axios.post(hfUrl, 
+        const hfUrl = 'https://router.huggingface.co/hf-inference/models/facebook/bart-large-cnn';
+        const response = await axios.post(hfUrl,
             { inputs: extractedText },
             { headers: { 'Authorization': `Bearer ${hfKey}` } }
         );

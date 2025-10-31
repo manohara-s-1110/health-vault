@@ -109,7 +109,7 @@ export default function AddReport() {
         });
 
         // IMPORTANT: Replace with your deployed backend URL
-        const response = await fetch('https://healthvault-backend.onrender.com/process-report', {
+        const response = await fetch('https://health-vault-ewwl.onrender.com/process-report', {
           method: 'POST',
           body: formData,
           headers: {
