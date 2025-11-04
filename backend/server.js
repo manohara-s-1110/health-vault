@@ -1,3 +1,5 @@
+// backend/server.js
+
 const express = require('express');
 const multer = require('multer');
 require('dotenv').config();
@@ -10,7 +12,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Get credentials from .env file
 const azureKey = process.env.AZURE_VISION_KEY;
 const azureEndpoint = process.env.AZURE_VISION_ENDPOINT;
-const hfKey = process.env.HUGGINGFACE_API_KEY; // Get the Hugging Face key
+const hfKey = process.env.HUGGINGFACE_API_KEY;
 
 // Helper function for waiting
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -23,7 +25,7 @@ app.post('/process-report', upload.single('reportFile'), async (req, res) => {
     }
 
     try {
-        // --- STEP 1: OCR with AZURE (This part is working and stays the same) ---
+        // --- STEP 1: OCR with AZURE ---
         console.log("Performing OCR with Azure REST API...");
         const analyzeUrl = `${azureEndpoint}/vision/v3.2/read/analyze`;
         const initialResponse = await axios.post(analyzeUrl, req.file.buffer, {
@@ -33,7 +35,7 @@ app.post('/process-report', upload.single('reportFile'), async (req, res) => {
             }
         });
         const operationUrl = initialResponse.headers['operation-location'];
-
+        
         let result;
         while (true) {
             await sleep(1000);
@@ -45,12 +47,12 @@ app.post('/process-report', upload.single('reportFile'), async (req, res) => {
         }
 
         if (result.status === "failed") throw new Error("Azure OCR process failed.");
-
+        
         let extractedText = "";
         if (result.analyzeResult && result.analyzeResult.readResults) {
             for (const page of result.analyzeResult.readResults) {
                 for (const line of page.lines) {
-                    extractedText += line.text + " "; // Use space instead of newline for better summarization
+                    extractedText += line.text + " ";
                 }
             }
         }
@@ -58,17 +60,32 @@ app.post('/process-report', upload.single('reportFile'), async (req, res) => {
         console.log("Azure OCR successful.");
 
 
-        // --- STEP 2: SUMMARIZATION with Hugging Face (This is the new logic) ---
-        console.log("Generating summary with Hugging Face...");
+        // --- ✨ NEW: Sanitize and truncate the text for Hugging Face ---
+        let textToSummarize = extractedText.trim(); // Remove leading/trailing whitespace
+        if (textToSummarize.length === 0) {
+            throw new Error("Extracted text was only whitespace.");
+        }
+        
+        // Most summarization models have a limit around 1024 tokens (~3000-4000 chars)
+        // We'll set a safe limit of 3000 characters to prevent the "index out of range" error.
+        const MAX_TEXT_LENGTH = 3000; 
+        if (textToSummarize.length > MAX_TEXT_LENGTH) {
+            console.log(`Truncating text from ${textToSummarize.length} to ${MAX_TEXT_LENGTH} chars.`);
+            textToSummarize = textToSummarize.substring(0, MAX_TEXT_LENGTH);
+        }
+        // --- END OF NEW LOGIC ---
 
-        // The URL for a popular summarization model
+
+        // --- STEP 2: SUMMARIZATION with Hugging Face ---
+        console.log("Generating summary with Hugging Face...");
+        
         const hfUrl = 'https://router.huggingface.co/hf-inference/models/facebook/bart-large-cnn';
-        const response = await axios.post(hfUrl,
-            { inputs: extractedText },
+        
+        const response = await axios.post(hfUrl, 
+            { inputs: textToSummarize }, // <-- Use the new truncated variable
             { headers: { 'Authorization': `Bearer ${hfKey}` } }
         );
 
-        // The summary is in the first element of the response array
         const summary = response.data[0].summary_text;
         console.log("Summary generated successfully.");
 
