@@ -1,40 +1,41 @@
 // app/(tabs)/reminder.js
-import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, SafeAreaView, StatusBar, 
-  TextInput, TouchableOpacity, FlatList, Alert, Platform 
+import React, { useState } from 'react';
+import {
+  View, Text, StyleSheet, SafeAreaView, StatusBar,
+  TextInput, TouchableOpacity, FlatList, Alert, Platform, Switch
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
+// --- NEW IMPORT ---
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 // Configure how notifications are handled when the app is open
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
   }),
 });
 
-// Key for AsyncStorage
 const REMINDERS_STORAGE_KEY = 'healthvault-reminders';
 
 export default function ReminderScreen() {
   const [reminders, setReminders] = useState([]);
   const [newReminderText, setNewReminderText] = useState('');
-  const [notificationToken, setNotificationToken] = useState(null);
+  
+  // --- NEW STATES FOR DATE/TIME PICKER ---
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isRecurring, setIsRecurring] = useState(false);
 
-  // Ask for notification permissions on first load
-  useEffect(() => {
-    registerForPushNotificationsAsync().then(token => setNotificationToken(token));
-  }, []);
-
-  // Load reminders from storage every time the screen is focused
+  // Ask for notification permissions (no change)
   useFocusEffect(
     React.useCallback(() => {
+      registerForPushNotificationsAsync();
       loadReminders();
     }, [])
   );
@@ -43,55 +44,69 @@ export default function ReminderScreen() {
     try {
       const data = await AsyncStorage.getItem(REMINDERS_STORAGE_KEY);
       setReminders(data ? JSON.parse(data) : []);
-    } catch (e) {
-      console.log("Failed to load reminders.", e);
-    }
+    } catch (e) { console.log("Failed to load reminders.", e); }
   };
 
   const saveReminders = async (newReminders) => {
     try {
       await AsyncStorage.setItem(REMINDERS_STORAGE_KEY, JSON.stringify(newReminders));
       setReminders(newReminders);
-    } catch (e) {
-      console.log("Failed to save reminders.", e);
-    }
+    } catch (e) { console.log("Failed to save reminders.", e); }
   };
 
-  // Function to schedule a new reminder
+  // --- UPDATED: Show/Hide the Date Picker ---
+  const showDatePicker = () => setDatePickerVisibility(true);
+  const hideDatePicker = () => setDatePickerVisibility(false);
+
+  // --- UPDATED: Handle Date Selection ---
+  const handleDateConfirm = (date) => {
+    if (date < new Date()) {
+      Alert.alert("Invalid Time", "Please select a time in the future.");
+      hideDatePicker();
+      return;
+    }
+    setSelectedDate(date);
+    hideDatePicker();
+  };
+
+  // --- UPDATED: Schedule a new reminder ---
   const handleAddReminder = async () => {
     if (newReminderText.trim().length === 0) {
       Alert.alert("Empty Reminder", "Please enter a message for your reminder.");
       return;
     }
-    
-    // For this example, we'll schedule it 5 seconds from now for easy testing
-    const triggerInSeconds = 5; 
-    // For a real app, you'd use a date picker:
-    // const trigger = new Date(yourSelectedDate); 
-    
+
+    // Use the selected date as the trigger
+    const trigger = {
+      date: selectedDate,
+      repeats: isRecurring, // Use the toggle state
+    };
+
     try {
-      // 1. Schedule the system notification
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: "HealthVault Reminder",
           body: newReminderText,
           data: { text: newReminderText },
         },
-        trigger: { seconds: triggerInSeconds },
+        trigger: trigger, // Use our new date trigger
       });
 
-      // 2. Save the reminder to our list in AsyncStorage
       const newReminder = {
-        id: notificationId, // Use the notification ID as our reminder ID
+        id: notificationId,
         text: newReminderText,
-        time: new Date(Date.now() + triggerInSeconds * 1000).toISOString()
+        time: selectedDate.toISOString(),
+        isRecurring: isRecurring,
       };
       
       const updatedReminders = [...reminders, newReminder];
       await saveReminders(updatedReminders);
       
       setNewReminderText('');
-      Alert.alert("Success", `Reminder set for ${triggerInSeconds} seconds from now.`);
+      setSelectedDate(new Date(Date.now() + 60000)); // Reset for next time
+      setIsRecurring(false);
+      
+      Alert.alert("Success", `Reminder set successfully!`);
       
     } catch (e) {
       console.log(e);
@@ -99,29 +114,25 @@ export default function ReminderScreen() {
     }
   };
 
-  // Function to delete a reminder
   const handleDeleteReminder = async (id) => {
     try {
-      // 1. Cancel the scheduled notification
       await Notifications.cancelScheduledNotificationAsync(id);
-      
-      // 2. Remove it from our list in AsyncStorage
       const updatedReminders = reminders.filter(r => r.id !== id);
       await saveReminders(updatedReminders);
-      
     } catch (e) {
       console.log(e);
       Alert.alert("Error", "Could not delete reminder.");
     }
   };
 
-  // Render item for the FlatList
+  // --- UPDATED: Render item for the FlatList ---
   const renderItem = ({ item }) => (
     <View style={styles.reminderItem}>
       <View style={styles.reminderTextContainer}>
         <Text style={styles.reminderText}>{item.text}</Text>
         <Text style={styles.reminderTime}>
-          Scheduled for: {new Date(item.time).toLocaleTimeString()}
+          {new Date(item.time).toLocaleString()}
+          {item.isRecurring ? ' (Daily)' : ''}
         </Text>
       </View>
       <TouchableOpacity onPress={() => handleDeleteReminder(item.id)}>
@@ -137,7 +148,8 @@ export default function ReminderScreen() {
         <Text style={styles.title}>My Reminders</Text>
         <Text style={styles.subtitle}>Schedule medication or appointment reminders.</Text>
 
-        <View style={styles.inputContainer}>
+        {/* --- NEW UI for adding reminders --- */}
+        <View style={styles.inputCard}>
           <TextInput
             style={styles.textInput}
             placeholder="e.g., Take antibiotics at 8 PM"
@@ -145,10 +157,37 @@ export default function ReminderScreen() {
             value={newReminderText}
             onChangeText={setNewReminderText}
           />
+          
+          <TouchableOpacity style={styles.datePickerButton} onPress={showDatePicker}>
+            <Ionicons name="calendar-outline" size={20} color="#4A90E2" />
+            <Text style={styles.datePickerText}>
+              {selectedDate.toLocaleString()}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.recurringContainer}>
+            <Text style={styles.recurringText}>Repeat Daily?</Text>
+            <Switch
+              trackColor={{ false: "#767577", true: "#81c7f3" }}
+              thumbColor={isRecurring ? "#4A90E2" : "#f4f3f4"}
+              onValueChange={setIsRecurring}
+              value={isRecurring}
+            />
+          </View>
+
           <TouchableOpacity style={styles.addButton} onPress={handleAddReminder}>
-            <Ionicons name="add" size={24} color="#fff" />
+            <Text style={styles.addButtonText}>Add Reminder</Text>
           </TouchableOpacity>
         </View>
+
+        <DateTimePickerModal
+          isVisible={isDatePickerVisible}
+          mode="datetime"
+          onConfirm={handleDateConfirm}
+          onCancel={hideDatePicker}
+          date={selectedDate}
+        />
+        {/* --- END OF NEW UI --- */}
 
         <FlatList
           data={reminders}
@@ -167,9 +206,8 @@ export default function ReminderScreen() {
   );
 }
 
-// Function to register for notifications
+// --- UPDATED: Notification Registration ---
 async function registerForPushNotificationsAsync() {
-  let token;
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'default',
@@ -191,40 +229,74 @@ async function registerForPushNotificationsAsync() {
       return;
     }
   } else {
-    Alert.alert('Must use physical device for Push Notifications');
+    // Alert.alert('Must use physical device for Push Notifications');
   }
-  return token;
 }
 
+// --- UPDATED: Styles ---
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   container: { flex: 1, padding: 20 },
   title: { fontSize: 28, fontWeight: 'bold', color: '#1E232C', marginBottom: 8 },
-  subtitle: { fontSize: 16, color: '#8391A1', marginBottom: 30 },
-  inputContainer: {
-    flexDirection: 'row',
+  subtitle: { fontSize: 16, color: '#8391A1', marginBottom: 20 },
+  
+  inputCard: {
+    backgroundColor: '#F7F9FC',
+    borderRadius: 12,
+    padding: 15,
     marginBottom: 20,
   },
   textInput: {
-    flex: 1,
     height: 52,
-    backgroundColor: "#F7F8FA",
+    backgroundColor: "#FFF",
     borderColor: "#E8ECF4",
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 15,
     color: "#1E232C",
+    marginBottom: 10,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 52,
+    backgroundColor: "#FFF",
+    borderColor: "#E8ECF4",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  datePickerText: {
+    fontSize: 15,
+    color: '#1E232C',
+    marginLeft: 10,
+  },
+  recurringContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+    paddingHorizontal: 5,
+  },
+  recurringText: {
+    fontSize: 16,
+    color: '#1E232C',
   },
   addButton: {
-    width: 52,
     height: 52,
     borderRadius: 8,
     backgroundColor: '#4A90E2',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
   },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  
   list: {
     flex: 1,
   },
