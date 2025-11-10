@@ -12,7 +12,7 @@ import { useFocusEffect } from 'expo-router';
 // --- NEW IMPORT ---
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
-// Configure how notifications are handled when the app is open
+// Configure how notifications are handled
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -29,10 +29,10 @@ export default function ReminderScreen() {
   
   // --- NEW STATES FOR DATE/TIME PICKER ---
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date(Date.now() + 60000)); // Default to 1 min in future
   const [isRecurring, setIsRecurring] = useState(false);
 
-  // Ask for notification permissions (no change)
+  // Ask for notification permissions
   useFocusEffect(
     React.useCallback(() => {
       registerForPushNotificationsAsync();
@@ -54,11 +54,11 @@ export default function ReminderScreen() {
     } catch (e) { console.log("Failed to save reminders.", e); }
   };
 
-  // --- UPDATED: Show/Hide the Date Picker ---
+  // --- Show/Hide the Date Picker ---
   const showDatePicker = () => setDatePickerVisibility(true);
   const hideDatePicker = () => setDatePickerVisibility(false);
 
-  // --- UPDATED: Handle Date Selection ---
+  // --- Handle Date Selection ---
   const handleDateConfirm = (date) => {
     if (date < new Date()) {
       Alert.alert("Invalid Time", "Please select a time in the future.");
@@ -69,14 +69,14 @@ export default function ReminderScreen() {
     hideDatePicker();
   };
 
-  // --- UPDATED: Schedule a new reminder ---
+  // --- Schedule a new reminder ---
   const handleAddReminder = async () => {
     if (newReminderText.trim().length === 0) {
       Alert.alert("Empty Reminder", "Please enter a message for your reminder.");
       return;
     }
 
-    // Use the selected date as the trigger
+    // Set trigger
     const trigger = {
       date: selectedDate,
       repeats: isRecurring, // Use the toggle state
@@ -89,7 +89,7 @@ export default function ReminderScreen() {
           body: newReminderText,
           data: { text: newReminderText },
         },
-        trigger: trigger, // Use our new date trigger
+        trigger: trigger,
       });
 
       const newReminder = {
@@ -114,6 +114,7 @@ export default function ReminderScreen() {
     }
   };
 
+  // --- Delete a reminder ---
   const handleDeleteReminder = async (id) => {
     try {
       await Notifications.cancelScheduledNotificationAsync(id);
@@ -125,7 +126,7 @@ export default function ReminderScreen() {
     }
   };
 
-  // --- UPDATED: Render item for the FlatList ---
+  // --- Render item for the FlatList ---
   const renderItem = ({ item }) => (
     <View style={styles.reminderItem}>
       <View style={styles.reminderTextContainer}>
@@ -148,7 +149,6 @@ export default function ReminderScreen() {
         <Text style={styles.title}>My Reminders</Text>
         <Text style={styles.subtitle}>Schedule medication or appointment reminders.</Text>
 
-        {/* --- NEW UI for adding reminders --- */}
         <View style={styles.inputCard}>
           <TextInput
             style={styles.textInput}
@@ -187,7 +187,6 @@ export default function ReminderScreen() {
           onCancel={hideDatePicker}
           date={selectedDate}
         />
-        {/* --- END OF NEW UI --- */}
 
         <FlatList
           data={reminders}
@@ -206,7 +205,7 @@ export default function ReminderScreen() {
   );
 }
 
-// --- UPDATED: Notification Registration ---
+// --- Notification Registration ---
 async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
@@ -229,11 +228,11 @@ async function registerForPushNotificationsAsync() {
       return;
     }
   } else {
-    // Alert.alert('Must use physical device for Push Notifications');
+    // console.log('Must use physical device for Push Notifications');
   }
 }
 
-// --- UPDATED: Styles ---
+// --- Styles ---
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   container: { flex: 1, padding: 20 },

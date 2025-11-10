@@ -1,12 +1,11 @@
-
 // app/report/[id].js
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { WebView } from 'react-native-webview';
+import * as Sharing from 'expo-sharing'; // Import Sharing
 
 // Reusable component for displaying a detail row
 const DetailRow = ({ label, value }) => {
@@ -20,7 +19,7 @@ const DetailRow = ({ label, value }) => {
 };
 
 export default function ReportDetailScreen() {
-  const { id } = useLocalSearchParams(); // Get the ID from the URL
+  const { id } = useLocalSearchParams();
   const router = useRouter();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,6 +42,24 @@ export default function ReportDetailScreen() {
     }
   }, [id]);
 
+  // --- Function to open the file ---
+  const handleViewFile = async () => {
+    if (!report.fileUri) {
+      Alert.alert("No File", "No file was saved with this report.");
+      return;
+    }
+    try {
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert("Error", "Viewing files is not available on this device.");
+        return;
+      }
+      await Sharing.shareAsync(report.fileUri);
+    } catch (error) {
+      console.error("Error sharing file:", error);
+      Alert.alert("Error", "Could not open the file.");
+    }
+  };
+
   if (loading) {
     return <ActivityIndicator size="large" style={styles.loader} />;
   }
@@ -57,9 +74,6 @@ export default function ReportDetailScreen() {
     );
   }
 
-  // Check if the file is an image
-  const isImage = report.fileUri && (report.fileUri.endsWith('.jpg') || report.fileUri.endsWith('.png') || report.fileUri.endsWith('.jpeg'));
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -70,16 +84,14 @@ export default function ReportDetailScreen() {
 
         <Text style={styles.title}>{report.reportType} - {report.patientName}</Text>
         
-        {/* --- Edit Button --- */}
         <TouchableOpacity 
           style={styles.editButton} 
-          onPress={() => { /* I can help you build the edit page next! */ Alert.alert("Edit", "Edit functionality coming soon.")}}
+          onPress={() => Alert.alert("Edit", "Edit functionality coming soon.")}
         >
           <Ionicons name="pencil" size={18} color="#fff" />
           <Text style={styles.editButtonText}>Edit Report</Text>
         </TouchableOpacity>
         
-        {/* --- AI Summary Section --- */}
         {report.summary && (
           <View style={styles.summaryContainer}>
             <Text style={styles.summaryTitle}>Full AI Summary</Text>
@@ -87,23 +99,17 @@ export default function ReportDetailScreen() {
           </View>
         )}
 
-        {/* --- File Viewer Section --- */}
+        {/* --- UPDATED: File Viewer Section --- */}
         {report.fileUri && (
-          <View style={styles.fileViewerContainer}>
+          <View style={styles.detailsContainer}>
             <Text style={styles.sectionTitle}>View Report File</Text>
-            {isImage ? (
-              <Image source={{ uri: report.fileUri }} style={styles.fileImage} />
-            ) : (
-              <WebView
-                originWhitelist={['*']}
-                source={{ uri: report.fileUri }}
-                style={styles.fileWebView}
-              />
-            )}
+            <TouchableOpacity style={styles.viewFileButton} onPress={handleViewFile}>
+              <Ionicons name="document-attach-outline" size={20} color="#fff" />
+              <Text style={styles.viewFileButtonText}>Open Original Report</Text>
+            </TouchableOpacity>
           </View>
         )}
         
-        {/* --- All Other Details --- */}
         <View style={styles.detailsContainer}>
           <Text style={styles.sectionTitle}>Report Details</Text>
           <DetailRow label="Patient Name" value={report.patientName} />
@@ -188,21 +194,19 @@ const styles = StyleSheet.create({
     color: '#1E232C',
     marginTop: 4,
   },
-  fileViewerContainer: {
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  fileImage: {
-    width: '100%',
-    height: 400,
+  viewFileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#34A853',
+    paddingVertical: 14,
     borderRadius: 8,
-    resizeMode: 'contain',
-    backgroundColor: '#f0f0f0',
+    marginTop: 10,
   },
-  fileWebView: {
-    width: '100%',
-    height: 500,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
-  }
+  viewFileButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 10,
+  },
 });
