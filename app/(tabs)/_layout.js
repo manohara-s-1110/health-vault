@@ -22,7 +22,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="medicine"
+        name="explore"
         options={{
           title: 'Explore',
           tabBarIcon: ({ color }) => <MaterialCommunityIcons name="pill" color={color} size={24} />,

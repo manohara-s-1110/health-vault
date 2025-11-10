@@ -10,16 +10,16 @@ import {
   TouchableOpacity,
   Image,
   Alert,
-  ActivityIndicator, // Import ActivityIndicator for the loading spinner
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as FileSystem from "expo-file-system";
+import { copyAsync, documentDirectory } from "expo-file-system/legacy";
 import uuid from "react-native-uuid";
 
-// Reusable input component (no changes needed here)
+// Reusable input component
 const FormInput = ({ label, placeholder, value, onChangeText, multiline, keyboardType, containerStyle }) => (
   <View style={[styles.inputContainer, containerStyle]}>
     <Text style={styles.label}>{label}</Text>
@@ -50,13 +50,13 @@ export default function AddReport() {
   const [advice, setAdvice] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
   const [pickedFile, setPickedFile] = useState(null);
-  const [isSaving, setIsSaving] = useState(false); // State for loading indicator
+  const [isSaving, setIsSaving] = useState(false);
 
-  // UPDATED: Pick file using DocumentPicker
+  // Pick file using DocumentPicker
   const pickFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ["image/*", "application/pdf"], // Allow images and PDFs
+        type: ["image/*", "application/pdf"],
         copyToCacheDirectory: true,
       });
 
@@ -77,11 +77,10 @@ export default function AddReport() {
   // Save file to local filesystem
   const saveFileToFS = async (file) => {
     if (!file) return null;
-    // Use the original file name for a more descriptive local name
     const fileName = `${uuid.v4()}-${file.name}`;
-    const dest = FileSystem.documentDirectory + fileName;
+    const dest = documentDirectory + fileName;
     try {
-      await FileSystem.copyAsync({ from: file.uri, to: dest });
+      await copyAsync({ from: file.uri, to: dest });
       return dest;
     } catch (error) {
       console.log("File copy error:", error);
@@ -89,15 +88,19 @@ export default function AddReport() {
     }
   };
 
-  // UPDATED: Save report function with backend integration and loading state
+  // Save report function
   const saveReport = async () => {
-    if (!patientName || !reportType) {
-      Alert.alert("Error", "Please fill in Patient Name and Report Type.");
+    
+    // --- UPDATED VALIDATION ---
+    // Only these two fields are mandatory. .trim() removes whitespace.
+    if (!patientName.trim() || !reportType.trim()) {
+      Alert.alert("Error", "Please fill in at least Patient Name and Report Type.");
       return;
     }
-    setIsSaving(true); // Start loading
+    // --- END OF UPDATE ---
 
-    let summary = "Summary could not be generated."; // Default summary
+    setIsSaving(true);
+    let summary = "Summary could not be generated."; 
 
     if (pickedFile) {
       try {
@@ -108,7 +111,7 @@ export default function AddReport() {
           type: pickedFile.mimeType,
         });
 
-        // IMPORTANT: Replace with your deployed backend URL
+        // Your live Render URL
         const response = await fetch('https://health-vault-ewwl.onrender.com/process-report', {
           method: 'POST',
           body: formData,
@@ -122,7 +125,7 @@ export default function AddReport() {
         }
 
         const result = await response.json();
-        summary = result.summary; // Get summary from backend
+        summary = result.summary;
 
       } catch (error) {
         console.error("Failed to get summary:", error);
@@ -139,7 +142,7 @@ export default function AddReport() {
         hospitalName, doctorName, bp, temperature, bmi,
         medications, advice, followUpDate,
         fileUri: savedFileUri,
-        summary: summary, // Add the summary to the report object
+        summary: summary,
       };
 
       const existingReportsData = await AsyncStorage.getItem("reports");
@@ -157,7 +160,7 @@ export default function AddReport() {
       console.error("Failed to save report:", error);
       Alert.alert("Error", "Could not save the report. Please try again.");
     } finally {
-      setIsSaving(false); // Stop loading regardless of outcome
+      setIsSaving(false);
     }
   };
 
@@ -167,9 +170,9 @@ export default function AddReport() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.headerTitle}>Add Report</Text>
 
-        {/* --- Form Inputs (No Changes) --- */}
-        <FormInput label="Report Type" placeholder="e.g., Blood Test, X-Ray" value={reportType} onChangeText={setReportType} />
-        <FormInput label="Patient Name" placeholder="John Doe" value={patientName} onChangeText={setPatientName} />
+        {/* --- Form Inputs --- */}
+        <FormInput label="Report Type *" placeholder="e.g., Blood Test, X-Ray" value={reportType} onChangeText={setReportType} />
+        <FormInput label="Patient Name *" placeholder="John Doe" value={patientName} onChangeText={setPatientName} />
         <View style={styles.row}>
           <FormInput label="Age" placeholder="e.g., 35" value={age} onChangeText={setAge} keyboardType="numeric" containerStyle={{ flex: 1, marginRight: 8 }} />
           <FormInput label="Report Date" placeholder="DD-MM-YYYY" value={reportDate} onChangeText={setReportDate} containerStyle={{ flex: 1, marginLeft: 8 }} />
@@ -191,7 +194,7 @@ export default function AddReport() {
         <FormInput label="Treatment / Lifestyle Advice" placeholder="e.g., rest, diet, exercise" value={advice} onChangeText={setAdvice} multiline />
         <FormInput label="Follow-up Date" placeholder="DD-MM-YYYY" value={followUpDate} onChangeText={setFollowUpDate} />
 
-        {/* --- UPDATED Upload Section --- */}
+        {/* --- Upload Section --- */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Upload Report (Image or PDF)</Text>
           <View style={styles.uploadRow}>
@@ -209,7 +212,7 @@ export default function AddReport() {
           </View>
         </View>
 
-        {/* --- UPDATED Save Button with Loading State --- */}
+        {/* --- Save Button --- */}
         <TouchableOpacity style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} onPress={saveReport} disabled={isSaving}>
           {isSaving ? (
             <ActivityIndicator size="small" color="#fff" />
@@ -222,7 +225,7 @@ export default function AddReport() {
   );
 }
 
-// --- UPDATED Styles ---
+// --- Styles ---
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#fff" },
   container: { padding: 20, paddingBottom: 40 },
@@ -245,7 +248,7 @@ const styles = StyleSheet.create({
     borderColor: "#E8ECF4",
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4, // Added for file name
+    paddingHorizontal: 4, 
   },
   fileName: {
     fontSize: 10,
@@ -272,7 +275,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   saveButtonDisabled: {
-    backgroundColor: "#A9C5E3", // A lighter color when disabled
+    backgroundColor: "#A9C5E3", 
   },
   saveButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
 });

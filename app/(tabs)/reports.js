@@ -26,7 +26,6 @@ export default function ReportsScreen() {
 
   // Function to handle the deletion of a report
   const handleDeleteReport = (reportId) => {
-    // This is the core logic for deleting the report
     const performDelete = async () => {
       try {
         const updatedReports = reports.filter(report => report.id !== reportId);
@@ -38,7 +37,6 @@ export default function ReportsScreen() {
       }
     };
 
-    // Use the browser's confirm dialog on web, and the native Alert on mobile
     if (Platform.OS === 'web') {
       if (window.confirm("Are you sure you want to delete this report? This action cannot be undone.")) {
         performDelete();
@@ -78,26 +76,38 @@ export default function ReportsScreen() {
           [...reports].reverse().map((rep) => (
             <View key={rep.id} style={styles.reportCard}>
               <View style={styles.reportRow}>
-                {/* Main content area */}
-                <View style={styles.reportContent}>
-                  <View style={styles.reportText}>
-                    <Text style={styles.reportTitle}>{rep.reportType} - {rep.patientName}</Text>
-                    <Text>Age: {rep.age} | Date: {rep.reportDate}</Text>
-                    <Text>Hospital: {rep.hospitalName} | Doctor: {rep.doctorName}</Text>
-                    <Text>BP: {rep.bp} | Temp: {rep.temperature}°C | BMI: {rep.bmi}</Text>
-                    <Text>Medications: {rep.medications}</Text>
-                    <Text>Advice: {rep.advice}</Text>
-                    <Text>Follow-up: {rep.followUpDate}</Text>
-                  </View>
-                  {rep.fileUri && (
-                    <Image
-                      source={{ uri: rep.fileUri }}
-                      style={styles.reportImage}
-                    />
-                  )}
-                </View>
+                
+                {/* --- UPDATED: Clickable Content Area --- */}
+                {/* This Link wraps only the content, making it clickable */}
+                <Link href={{ pathname: `/report/${rep.id}` }} asChild style={{flex: 1}}>
+                  <TouchableOpacity style={styles.reportContent}>
+                    <View style={styles.reportText}>
+                      <Text style={styles.reportTitle}>{rep.reportType} - {rep.patientName}</Text>
+                      
+                      {rep.summary && (
+                        <View style={styles.summaryContainer}>
+                          <Text style={styles.summaryTitle}>AI Summary</Text>
+                          {/* UPDATED: Truncated to 3 lines */}
+                          <Text style={styles.summaryText} numberOfLines={3}>
+                            {rep.summary}
+                          </Text>
+                        </View>
+                      )}
+                      
+                      <Text style={styles.detailText}>Age: {rep.age} | Date: {rep.reportDate}</Text>
+                      {/* You can add more details here or leave them for the detail page */}
+                    </View>
+                    {rep.fileUri && (
+                      <Image
+                        source={{ uri: rep.fileUri }}
+                        style={styles.reportImage}
+                      />
+                    )}
+                  </TouchableOpacity>
+                </Link>
+                {/* --- END OF UPDATE --- */}
 
-                {/* Delete Button */}
+                {/* Delete Button (now sits outside the Link) */}
                 <TouchableOpacity
                   onPress={() => handleDeleteReport(rep.id)}
                   style={styles.deleteButton}
@@ -145,7 +155,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   reportContent: {
-    flex: 1,
+    flex: 1, // Takes up available space
     flexDirection: 'row',
   },
   reportText: {
@@ -156,6 +166,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     marginBottom: 5,
+    color: '#1E232C',
+  },
+  detailText: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 3,
   },
   reportImage: {
     width: 100,
@@ -164,6 +180,23 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 5,
-    marginLeft: 10,
+    marginLeft: 10, // Gives space between content and delete button
+  },
+  summaryContainer: {
+    backgroundColor: '#E9F0F8', 
+    borderRadius: 8,
+    padding: 12,
+    marginVertical: 10,
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4A90E2', 
+    marginBottom: 5,
+  },
+  summaryText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20, 
   },
 });
