@@ -20,28 +20,28 @@ export default function TabLayout() {
           title: 'Home',
           tabBarIcon: ({ color }) => <Ionicons name="home-outline" color={color} size={24} />,
         }}
-      />
+      />/*
       <Tabs.Screen
         name="explore"
         options={{
           title: 'Explore',
           tabBarIcon: ({ color }) => <MaterialCommunityIcons name="pill" color={color} size={24} />,
         }}
-      />
+      />*/
       <Tabs.Screen
         name="reports"
         options={{
           title: 'Reports',
           tabBarIcon: ({ color }) => <Ionicons name="document-text-outline" color={color} size={24} />,
         }}
-      />
+      />/*
       <Tabs.Screen
         name="reminder"
         options={{
           title: 'Reminder',
           tabBarIcon: ({ color }) => <Ionicons name="notifications-outline" color={color} size={24} />,
         }}
-      />
+      />*/
       <Tabs.Screen
         name="profile"
         options={{

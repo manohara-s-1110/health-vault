@@ -2,32 +2,51 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   View, Text, StyleSheet, StatusBar, 
-  ActivityIndicator, TouchableOpacity, Linking, Platform 
+  ActivityIndicator, TouchableOpacity, Linking, Platform, FlatList 
 } from 'react-native';
-// Import SafeAreaView from the correct library
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
-import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-// Import this wrapper, it's required for the bottom sheet
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-// Get the Google Maps API key from our app.config.js
-const GOOGLE_MAPS_API_KEY = Constants.expoConfig.extra.GOOGLE_MAPS_API_KEY;
+const GOOGLE_MAPS_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
 
 export default function ExploreScreen() {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  const mapRef = useRef(null);
-  const bottomSheetRef = useRef(null);
+  const [BottomSheetComp, setBottomSheetComp] = useState(null);
+  const [BottomSheetFlatListComp, setBottomSheetFlatListComp] = useState(null);
+  const [bottomSheetAvailable, setBottomSheetAvailable] = useState(false);
 
-  // Define the "snap points" for the bottom sheet
+  const mapRef = useRef(null);
+
   const snapPoints = useMemo(() => ['25%', '50%', '90%'], []);
+
+  // Try to lazy-load bottom-sheet after mount
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const mod = await import('@gorhom/bottom-sheet').catch(() => null);
+        if (mod && mounted) {
+          setBottomSheetComp(() => mod.default || mod.BottomSheet || mod);
+          setBottomSheetFlatListComp(() => mod.BottomSheetFlatList || mod.FlatList || mod);
+          setBottomSheetAvailable(true);
+        } else {
+          console.warn('Bottom sheet module not available — falling back to simple list.');
+          setBottomSheetAvailable(false);
+        }
+      } catch (err) {
+        console.warn('Failed to import bottom-sheet dynamically:', err);
+        setBottomSheetAvailable(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   // 1. Get User's Location
   useEffect(() => {
@@ -39,71 +58,64 @@ export default function ExploreScreen() {
         return;
       }
 
-      let currentLocation = await Location.getCurrentPositionAsync({});
-      setLocation(currentLocation.coords);
+      try {
+        let currentLocation = await Location.getCurrentPositionAsync({});
+        setLocation(currentLocation.coords);
+      } catch (e) {
+        setErrorMsg('Unable to fetch location.');
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
   // 2. Fetch Nearby Places once we have the location
   useEffect(() => {
-    if (location) {
-      fetchNearbyPlaces(location);
-    }
+    if (location) fetchNearbyPlaces(location);
   }, [location]);
 
-  // 3. Google Places API Fetch
   const fetchNearbyPlaces = async (coords) => {
     const { latitude, longitude } = coords;
-    const radius = 5000; // 5km radius
-    
+    const radius = 5000;
     const hospitalUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=hospital&key=${GOOGLE_MAPS_API_KEY}`;
     const pharmacyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=pharmacy&key=${GOOGLE_MAPS_API_KEY}`;
-    
+
     try {
-      const [hospitalResponse, pharmacyResponse] = await Promise.all([
-        fetch(hospitalUrl),
-        fetch(pharmacyUrl)
-      ]);
-      
+      const [hospitalResponse, pharmacyResponse] = await Promise.all([fetch(hospitalUrl), fetch(pharmacyUrl)]);
       const hospitalData = await hospitalResponse.json();
       const pharmacyData = await pharmacyResponse.json();
-
       const combinedResults = [...(hospitalData.results || []), ...(pharmacyData.results || [])];
-      
       const uniquePlaces = Array.from(new Map(combinedResults.map(p => [p.place_id, p])).values());
-      
       setPlaces(uniquePlaces);
     } catch (error) {
       console.error("Error fetching places:", error);
       setErrorMsg("Failed to load nearby places.");
+      setPlaces([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // 4. Helper function to open a place in Google Maps
   const openInMaps = (lat, lng) => {
     const scheme = Platform.OS === 'ios' ? 'maps:' : 'geo:';
     const url = `${scheme}${lat},${lng}`;
-    Linking.openURL(url);
+    Linking.openURL(url).catch(() => {});
   };
 
-  // 5. Render list items in the Bottom Sheet
   const renderPlaceItem = ({ item }) => (
     <TouchableOpacity 
-      style={styles.itemContainer} 
+      style={styles.itemContainer}
       onPress={() => {
         mapRef.current?.animateToRegion({
           latitude: item.geometry.location.lat,
           longitude: item.geometry.location.lng,
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
-        });
-        bottomSheetRef.current?.snapToIndex(1); 
+        }, 500);
       }}
     >
       <View style={styles.itemIcon}>
-        <Ionicons name={item.types.includes('hospital') ? "medkit" : "medical"} size={24} color="#4A90E2" />
+        <Ionicons name={item.types?.includes('hospital') ? "medkit" : "medical"} size={24} color="#4A90E2" />
       </View>
       <View style={styles.itemTextContainer}>
         <Text style={styles.itemTitle}>{item.name}</Text>
@@ -115,7 +127,6 @@ export default function ExploreScreen() {
     </TouchableOpacity>
   );
 
-  // Show loading indicator
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -127,7 +138,6 @@ export default function ExploreScreen() {
     );
   }
 
-  // Show error message
   if (errorMsg) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -138,10 +148,8 @@ export default function ExploreScreen() {
     );
   }
 
-  // Show the map and list
   return (
-    // Wrap the *entire* screen in GestureHandlerRootView
-    <GestureHandlerRootView style={{ flex: 1 }}> 
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.container}>
@@ -149,8 +157,8 @@ export default function ExploreScreen() {
             ref={mapRef}
             style={styles.map}
             initialRegion={{
-              latitude: location.latitude,
-              longitude: location.longitude,
+              latitude: location?.latitude || 0,
+              longitude: location?.longitude || 0,
               latitudeDelta: 0.0922,
               longitudeDelta: 0.0421,
             }}
@@ -164,24 +172,27 @@ export default function ExploreScreen() {
                   longitude: place.geometry.location.lng,
                 }}
                 title={place.name}
-                pinColor={place.types.includes('hospital') ? 'red' : 'blue'}
+                pinColor={place.types?.includes('hospital') ? 'red' : 'blue'}
               />
             ))}
           </MapView>
-          
-          <BottomSheet
-            ref={bottomSheetRef}
-            index={1} 
-            snapPoints={snapPoints}
-          >
-            <BottomSheetFlatList
-              data={places}
-              renderItem={renderPlaceItem}
-              keyExtractor={(item) => item.place_id}
-              contentContainerStyle={styles.listContainer}
-              ListHeaderComponent={<Text style={styles.listHeader}>Nearby Hospitals & Pharmacies</Text>}
-            />
-          </BottomSheet>
+
+          {/* If bottom-sheet available, render it; otherwise fallback to a simple list */}
+          {bottomSheetAvailable && BottomSheetComp ? (
+            <BottomSheetComp index={1} snapPoints={snapPoints}>
+              {/* dynamic import of BottomSheetFlatList is tricky; render a simple array map as fallback inside */}
+              <View style={styles.listContainer}>
+                <Text style={styles.listHeader}>Nearby Hospitals & Pharmacies</Text>
+                <FlatList data={places} renderItem={renderPlaceItem} keyExtractor={i => i.place_id} />
+              </View>
+            </BottomSheetComp>
+          ) : (
+            // fallback: show a white panel anchored at bottom with list
+            <View style={styles.fallbackList}>
+              <Text style={styles.listHeader}>Nearby Hospitals & Pharmacies</Text>
+              <FlatList data={places} renderItem={renderPlaceItem} keyExtractor={i => i.place_id} />
+            </View>
+          )}
         </View>
       </SafeAreaView>
     </GestureHandlerRootView>
@@ -231,5 +242,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8391A1',
     marginTop: 4,
+  },
+  fallbackList: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: '45%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    paddingTop: 12,
   },
 });

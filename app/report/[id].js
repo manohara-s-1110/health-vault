@@ -1,15 +1,13 @@
 // app/report/[id].js
-
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import * as Sharing from 'expo-sharing'; // Import Sharing
 
 // Reusable component for displaying a detail row
 const DetailRow = ({ label, value }) => {
-  if (!value) return null; // Don't show empty rows
+  if (!value) return null;
   return (
     <View style={styles.detailRow}>
       <Text style={styles.detailLabel}>{label}</Text>
@@ -37,26 +35,43 @@ export default function ReportDetailScreen() {
         setLoading(false);
       }
     };
-    if (id) {
-      loadReport();
-    }
+    if (id) loadReport();
   }, [id]);
 
-  // --- Function to open the file ---
+  // --- Function to open the file (lazy import + fallback) ---
   const handleViewFile = async () => {
-    if (!report.fileUri) {
+    if (!report?.fileUri) {
       Alert.alert("No File", "No file was saved with this report.");
       return;
     }
+
     try {
-      if (!(await Sharing.isAvailableAsync())) {
-        Alert.alert("Error", "Viewing files is not available on this device.");
-        return;
+      // lazy import so Metro won't require the native module at startup
+      const SharingModule = await import('expo-sharing').catch(() => null);
+
+      if (SharingModule && SharingModule.isAvailableAsync) {
+        try {
+          const available = await SharingModule.isAvailableAsync();
+          if (available) {
+            await SharingModule.shareAsync(report.fileUri);
+            return;
+          }
+        } catch (e) {
+          // continue to fallback
+          console.warn('Sharing module failed at runtime:', e);
+        }
       }
-      await Sharing.shareAsync(report.fileUri);
-    } catch (error) {
-      console.error("Error sharing file:", error);
-      Alert.alert("Error", "Could not open the file.");
+    } catch (err) {
+      console.warn('Error importing expo-sharing dynamically:', err);
+    }
+
+    // Fallback: try to open by URL (Files app / default viewer)
+    try {
+      const opened = await Linking.openURL(report.fileUri);
+      // sometimes openURL resolves undefined, so we just try
+    } catch (err) {
+      console.warn('Fallback openURL failed:', err);
+      Alert.alert('Open failed', 'Cannot open file on this device. Try installing a PDF viewer or use the web build.');
     }
   };
 
@@ -66,67 +81,58 @@ export default function ReportDetailScreen() {
 
   if (!report) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <Text style={styles.title}>Report not found</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <Text style={styles.title}>Report not found</Text>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1E232C" />
-          <Text style={styles.backButtonText}>Back to Reports</Text>
-        </TouchableOpacity>
+    <ScrollView contentContainerStyle={styles.container}>
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color="#1E232C" />
+        <Text style={styles.backButtonText}>Back to Reports</Text>
+      </TouchableOpacity>
 
-        <Text style={styles.title}>{report.reportType} - {report.patientName}</Text>
-        
-        <TouchableOpacity 
-          style={styles.editButton} 
-          onPress={() => Alert.alert("Edit", "Edit functionality coming soon.")}
-        >
-          <Ionicons name="pencil" size={18} color="#fff" />
-          <Text style={styles.editButtonText}>Edit Report</Text>
-        </TouchableOpacity>
-        
-        {report.summary && (
-          <View style={styles.summaryContainer}>
-            <Text style={styles.summaryTitle}>Full AI Summary</Text>
-            <Text style={styles.summaryText}>{report.summary}</Text>
-          </View>
-        )}
+      <Text style={styles.title}>{report.reportType} - {report.patientName}</Text>
 
-        {/* --- UPDATED: File Viewer Section --- */}
-        {report.fileUri && (
-          <View style={styles.detailsContainer}>
-            <Text style={styles.sectionTitle}>View Report File</Text>
-            <TouchableOpacity style={styles.viewFileButton} onPress={handleViewFile}>
-              <Ionicons name="document-attach-outline" size={20} color="#fff" />
-              <Text style={styles.viewFileButtonText}>Open Original Report</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        
-        <View style={styles.detailsContainer}>
-          <Text style={styles.sectionTitle}>Report Details</Text>
-          <DetailRow label="Patient Name" value={report.patientName} />
-          <DetailRow label="Age" value={report.age} />
-          <DetailRow label="Report Date" value={report.reportDate} />
-          <DetailRow label="Hospital" value={report.hospitalName} />
-          <DetailRow label="Doctor" value={report.doctorName} />
-          <DetailRow label="Blood Pressure" value={report.bp} />
-          <DetailRow label="Temperature" value={report.temperature ? `${report.temperature}°C` : null} />
-          <DetailRow label="BMI" value={report.bmi} />
-          <DetailRow label="Medications" value={report.medications} />
-          <DetailRow label="Advice" value={report.advice} />
-          <DetailRow label="Follow-up Date" value={report.followUpDate} />
+      <TouchableOpacity style={styles.editButton} onPress={() => Alert.alert("Edit", "Edit functionality coming soon.")}>
+        <Ionicons name="pencil" size={18} color="#fff" />
+        <Text style={styles.editButtonText}>Edit Report</Text>
+      </TouchableOpacity>
+
+      {report.summary && (
+        <View style={styles.summaryContainer}>
+          <Text style={styles.summaryTitle}>Full AI Summary</Text>
+          <Text style={styles.summaryText}>{report.summary}</Text>
         </View>
+      )}
 
-      </ScrollView>
-    </SafeAreaView>
+      {report.fileUri && (
+        <View style={styles.detailsContainer}>
+          <Text style={styles.sectionTitle}>View Report File</Text>
+          <TouchableOpacity style={styles.viewFileButton} onPress={handleViewFile}>
+            <Ionicons name="document-attach-outline" size={20} color="#fff" />
+            <Text style={styles.viewFileButtonText}>Open Original Report</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <View style={styles.detailsContainer}>
+        <Text style={styles.sectionTitle}>Report Details</Text>
+        <DetailRow label="Patient Name" value={report.patientName} />
+        <DetailRow label="Age" value={report.age} />
+        <DetailRow label="Report Date" value={report.reportDate} />
+        <DetailRow label="Hospital" value={report.hospitalName} />
+        <DetailRow label="Doctor" value={report.doctorName} />
+        <DetailRow label="Blood Pressure" value={report.bp} />
+        <DetailRow label="Temperature" value={report.temperature ? `${report.temperature}°C` : null} />
+        <DetailRow label="BMI" value={report.bmi} />
+        <DetailRow label="Medications" value={report.medications} />
+        <DetailRow label="Advice" value={report.advice} />
+        <DetailRow label="Follow-up Date" value={report.followUpDate} />
+      </View>
+    </ScrollView>
   );
 }
 
