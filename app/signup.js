@@ -6,8 +6,8 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '../firebaseConfig'; // ✅ Import firebase auth
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 
 const CustomTextInput = ({ icon, placeholder, value, onChangeText, secureTextEntry = false, keyboardType = 'default' }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(!secureTextEntry);
@@ -52,15 +52,22 @@ export default function SignUpScreen() {
     }
 
     try {
-      // ✅ Firebase signup
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName: name });
-      console.log("✅ User registered:", userCredential.user);
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error(error.message);
-      alert(error.message);
-    }
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+        // Update display name
+        await updateProfile(userCredential.user, { displayName: name });
+
+        // Send verification email
+        await sendEmailVerification(userCredential.user);
+
+        // Redirect to the verify screen instead of going into the app
+        router.replace('/verify_email');
+
+        console.log("✅ User registered (verification email sent):", userCredential.user.email);
+      } catch (error) {
+        console.error(error.message);
+        alert(error.message);
+      }
   };
 
   return (

@@ -49,13 +49,21 @@ export default function SignInScreen() {
       return;
     }
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log("✅ Logged in:", userCredential.user);
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error(error.message);
-      alert(error.message);
-    }
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // If email is verified, go in. Otherwise, route to verification screen.
+        if (user.emailVerified) {
+          console.log("✅ Logged in:", user.email);
+          router.replace('/(tabs)');
+        } else {
+          // navigate to verify screen; user can resend/check from there
+          router.replace('/verify_email');
+        }
+      } catch (error) {
+        console.error(error.message);
+        alert(error.message);
+      }
   };
 
   return (

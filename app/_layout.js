@@ -11,6 +11,12 @@ export default function RootLayout() {
       <Stack.Screen name="signup" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
+      <Stack.Screen name="manageprofile" options={{ headerShown: false }} />
+      <Stack.Screen name="faq" options={{ headerShown: false }} />
+      <Stack.Screen name="languagespreference" options={{ headerShown: false }} />
+      <Stack.Screen name="emergencysection" options={{ headerShown: false }} />
+
+
       {/* The new screen with a visible header, title, and back button */}
       <Stack.Screen
         name="add_report"

@@ -58,7 +58,7 @@ export default function HomeScreen() {
         return { title: '', keyboard: 'default' };
     }
   };
-  
+
   const modalInfo = getModalInfo();
 
 
@@ -86,7 +86,7 @@ export default function HomeScreen() {
             <Text style={styles.widgetTitle}>Blood Group</Text>
             <Text style={styles.smallValue}>{bloodGroup}</Text>
           </TouchableOpacity>
-          
+
           {/* Weight Widget */}
           <TouchableOpacity style={[styles.widget, styles.smallWidget, styles.weightWidget]} onPress={() => openEditModal('weight', weight)}>
             <MaterialCommunityIcons name="weight-lifter" size={30} color="#D4A05D" />
@@ -95,7 +95,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </View>
-      
+
       {/* Edit Value Modal */}
       <Modal
         animationType="fade"
@@ -103,8 +103,8 @@ export default function HomeScreen() {
         visible={isModalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : "height"} 
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.centeredView}
         >
           <View style={styles.modalView}>
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     color: '#1E232C',
     marginTop: 'auto',
   },
-  
+
   // Modal Styles
   centeredView: {
     flex: 1,
