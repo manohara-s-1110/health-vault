@@ -9,10 +9,9 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
-// --- NEW IMPORT ---
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
-// Configure how notifications are handled
+// Configure how notifications are handled when the app is open
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -27,7 +26,7 @@ export default function ReminderScreen() {
   const [reminders, setReminders] = useState([]);
   const [newReminderText, setNewReminderText] = useState('');
   
-  // --- NEW STATES FOR DATE/TIME PICKER ---
+  // States for Date/Time Picker
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date(Date.now() + 60000)); // Default to 1 min in future
   const [isRecurring, setIsRecurring] = useState(false);
@@ -54,13 +53,14 @@ export default function ReminderScreen() {
     } catch (e) { console.log("Failed to save reminders.", e); }
   };
 
-  // --- Show/Hide the Date Picker ---
+  // Show/Hide the Date Picker
   const showDatePicker = () => setDatePickerVisibility(true);
   const hideDatePicker = () => setDatePickerVisibility(false);
 
-  // --- Handle Date Selection ---
+  // Handle Date Selection
   const handleDateConfirm = (date) => {
-    if (date < new Date()) {
+    const now = new Date();
+    if (date <= now) {
       Alert.alert("Invalid Time", "Please select a time in the future.");
       hideDatePicker();
       return;
@@ -69,18 +69,35 @@ export default function ReminderScreen() {
     hideDatePicker();
   };
 
-  // --- Schedule a new reminder ---
+  // --- UPDATED: Schedule a new reminder ---
   const handleAddReminder = async () => {
     if (newReminderText.trim().length === 0) {
       Alert.alert("Empty Reminder", "Please enter a message for your reminder.");
       return;
     }
 
-    // Set trigger
-    const trigger = {
-      date: selectedDate,
-      repeats: isRecurring, // Use the toggle state
-    };
+    const now = new Date();
+    const triggerDate = new Date(selectedDate);
+    
+    // Double check time before scheduling
+    if (triggerDate <= now) {
+      Alert.alert("Invalid Time", "The selected time has already passed. Please choose a future time.");
+      return;
+    }
+
+    // Create the trigger object based on recurrence
+    let trigger;
+    if (isRecurring) {
+      // For daily repeats, we use the hour and minute components
+      trigger = {
+        hour: triggerDate.getHours(),
+        minute: triggerDate.getMinutes(),
+        repeats: true,
+      };
+    } else {
+      // For one-time, we pass the exact date object
+      trigger = { date: triggerDate }; 
+    }
 
     try {
       const notificationId = await Notifications.scheduleNotificationAsync({
@@ -88,6 +105,7 @@ export default function ReminderScreen() {
           title: "HealthVault Reminder",
           body: newReminderText,
           data: { text: newReminderText },
+          sound: 'default',
         },
         trigger: trigger,
       });
@@ -95,7 +113,7 @@ export default function ReminderScreen() {
       const newReminder = {
         id: notificationId,
         text: newReminderText,
-        time: selectedDate.toISOString(),
+        time: triggerDate.toISOString(),
         isRecurring: isRecurring,
       };
       
@@ -103,10 +121,10 @@ export default function ReminderScreen() {
       await saveReminders(updatedReminders);
       
       setNewReminderText('');
-      setSelectedDate(new Date(Date.now() + 60000)); // Reset for next time
+      setSelectedDate(new Date(Date.now() + 60000)); // Reset to 1 min in future
       setIsRecurring(false);
       
-      Alert.alert("Success", `Reminder set successfully!`);
+      Alert.alert("Success", `Reminder set for ${triggerDate.toLocaleString()}`);
       
     } catch (e) {
       console.log(e);
@@ -114,7 +132,7 @@ export default function ReminderScreen() {
     }
   };
 
-  // --- Delete a reminder ---
+  // Delete a reminder
   const handleDeleteReminder = async (id) => {
     try {
       await Notifications.cancelScheduledNotificationAsync(id);
@@ -126,7 +144,7 @@ export default function ReminderScreen() {
     }
   };
 
-  // --- Render item for the FlatList ---
+  // Render item for the FlatList
   const renderItem = ({ item }) => (
     <View style={styles.reminderItem}>
       <View style={styles.reminderTextContainer}>
@@ -205,7 +223,7 @@ export default function ReminderScreen() {
   );
 }
 
-// --- Notification Registration ---
+// Notification Registration
 async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
@@ -227,12 +245,10 @@ async function registerForPushNotificationsAsync() {
       Alert.alert('Failed to get permissions for notifications.');
       return;
     }
-  } else {
-    // console.log('Must use physical device for Push Notifications');
   }
 }
 
-// --- Styles ---
+// Styles
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   container: { flex: 1, padding: 20 },
