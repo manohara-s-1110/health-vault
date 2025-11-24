@@ -1,127 +1,109 @@
-// app/(tabs)/index.js
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Button,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  StatusBar,
   StyleSheet,
   Text,
-  TextInput,
+  View,
   TouchableOpacity,
-  View
+  ScrollView,
+  Modal,
+  Pressable,
+  Alert,
+  SafeAreaView,
+  StatusBar,
 } from 'react-native';
 
-export default function HomeScreen() {
-  // State for widget values
-  const [heartRate, setHeartRate] = useState('97');
-  const [bloodGroup, setBloodGroup] = useState('A+');
-  const [weight, setWeight] = useState('102');
+// Import the registry
+import { AVAILABLE_WIDGETS } from '../widgets/widgetRegistry.js';
 
-  // State for modal visibility and content
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [editingWidget, setEditingWidget] = useState(null); // e.g., 'heartRate', 'bloodGroup', 'weight'
-  const [inputValue, setInputValue] = useState('');
+export default function App() {
+  const [activeWidgets, setActiveWidgets] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
 
-  // Function to open the modal with the correct context
-  const openEditModal = (widget, currentValue) => {
-    setEditingWidget(widget);
-    setInputValue(currentValue);
-    setModalVisible(true);
-  };
-
-  // Function to save the edited value and close the modal
-  const handleSaveChanges = () => {
-    if (editingWidget === 'heartRate') {
-      setHeartRate(inputValue);
-    } else if (editingWidget === 'bloodGroup') {
-      setBloodGroup(inputValue);
-    } else if (editingWidget === 'weight') {
-      setWeight(inputValue);
-    }
+  // Add a widget based on the registry config
+  const handleAddWidget = (widgetConfig) => {
+    const newWidget = {
+      id: Date.now().toString(),
+      ...widgetConfig,
+    };
+    setActiveWidgets([...activeWidgets, newWidget]);
     setModalVisible(false);
-    setEditingWidget(null);
   };
 
-  const getModalInfo = () => {
-    switch (editingWidget) {
-      case 'heartRate':
-        return { title: 'Heart Rate', keyboard: 'numeric' };
-      case 'bloodGroup':
-        return { title: 'Blood Group', keyboard: 'default' };
-      case 'weight':
-        return { title: 'Weight', keyboard: 'numeric' };
-      default:
-        return { title: '', keyboard: 'default' };
-    }
+  const confirmDelete = (id) => {
+    Alert.alert("Remove Widget", "Are you sure?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => setActiveWidgets(curr => curr.filter(w => w.id !== id))
+      }
+    ]);
   };
-
-  const modalInfo = getModalInfo();
-
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.container}>
-        {/* Heart Rate Widget */}
-        <TouchableOpacity style={[styles.widget, styles.largeWidget]} onPress={() => openEditModal('heartRate', heartRate)}>
-          <View>
-            <Text style={styles.widgetTitle}>Heart rate</Text>
-            <View style={styles.valueContainer}>
-              <Text style={styles.largeValue}>{heartRate}</Text>
-              <Text style={styles.unit}>bpm</Text>
-            </View>
-          </View>
-          <MaterialCommunityIcons name="chart-line-variant" size={60} color="#1E232C" />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>My Dashboard</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Text style={styles.addButtonText}>+ Add</Text>
         </TouchableOpacity>
-
-        {/* Row for smaller widgets */}
-        <View style={styles.widgetRow}>
-          {/* Blood Group Widget */}
-          <TouchableOpacity style={[styles.widget, styles.smallWidget, styles.bloodWidget]} onPress={() => openEditModal('bloodGroup', bloodGroup)}>
-            <Ionicons name="water" size={30} color="#C94A6F" />
-            <Text style={styles.widgetTitle}>Blood Group</Text>
-            <Text style={styles.smallValue}>{bloodGroup}</Text>
-          </TouchableOpacity>
-
-          {/* Weight Widget */}
-          <TouchableOpacity style={[styles.widget, styles.smallWidget, styles.weightWidget]} onPress={() => openEditModal('weight', weight)}>
-            <MaterialCommunityIcons name="weight-lifter" size={30} color="#D4A05D" />
-            <Text style={styles.widgetTitle}>Weight</Text>
-            <Text style={styles.smallValue}>{weight}lbs</Text>
-          </TouchableOpacity>
-        </View>
       </View>
 
-      {/* Edit Value Modal */}
+      {/* Dashboard Grid */}
+      <ScrollView contentContainerStyle={styles.widgetContainer}>
+        {activeWidgets.length === 0 ? (
+          <Text style={styles.emptyText}>Tap "+ Add" to choose a widget</Text>
+        ) : (
+          activeWidgets.map((widget) => (
+            <Pressable
+              key={widget.id}
+              style={[styles.widgetCard, { backgroundColor: widget.color }]}
+              onLongPress={() => confirmDelete(widget.id)}
+              delayLongPress={500}
+            >
+              {/* Dynamic Component Rendering */}
+              <widget.component />
+            </Pressable>
+          ))
+        )}
+      </ScrollView>
+
+      {/* Widget Selection Modal */}
       <Modal
-        animationType="fade"
+        animationType="slide"
         transparent={true}
-        visible={isModalVisible}
+        visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.centeredView}
-        >
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Edit {modalInfo.title}</Text>
-            <TextInput
-              style={styles.input}
-              onChangeText={setInputValue}
-              value={inputValue}
-              keyboardType={modalInfo.keyboard}
-              autoFocus={true}
-            />
-            <View style={styles.modalButtons}>
-              <Button title="Cancel" onPress={() => setModalVisible(false)} color="#8391A1" />
-              <Button title="Save" onPress={handleSaveChanges} />
-            </View>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Available Widgets</Text>
+
+            {AVAILABLE_WIDGETS.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.modalItem}
+                onPress={() => handleAddWidget(item)}
+              >
+                <Text style={styles.modalItemText}>{item.label}</Text>
+                <Text style={styles.plusIcon}>+</Text>
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
     </SafeAreaView>
@@ -129,109 +111,27 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 15, backgroundColor: '#FFF',
+    borderBottomWidth: 1, borderBottomColor: '#E0E0E0',
   },
-  container: {
-    flex: 1,
-    padding: 20,
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333' },
+  addButton: { backgroundColor: '#007AFF', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20 },
+  addButtonText: { color: '#FFF', fontWeight: '600' },
+  widgetContainer: { padding: 20, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  emptyText: { textAlign: 'center', marginTop: 50, color: '#888', width: '100%' },
+  widgetCard: {
+    width: '48%', aspectRatio: 1, borderRadius: 16, padding: 15, marginBottom: 15,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, elevation: 3,
   },
-  widget: {
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-  },
-  largeWidget: {
-    backgroundColor: '#E6EAFB',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  widgetRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  smallWidget: {
-    width: '48%',
-    height: 180,
-    justifyContent: 'space-between',
-  },
-  bloodWidget: {
-    backgroundColor: '#F8E7EE',
-  },
-  weightWidget: {
-    backgroundColor: '#FCF3E4',
-  },
-  widgetTitle: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
-  valueContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginTop: 10,
-  },
-  largeValue: {
-    fontSize: 64,
-    fontWeight: 'bold',
-    color: '#1E232C',
-  },
-  unit: {
-    fontSize: 18,
-    color: '#1E232C',
-    marginLeft: 5,
-    fontWeight: '600',
-  },
-  smallValue: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#1E232C',
-    marginTop: 'auto',
-  },
-
-  // Modal Styles
-  centeredView: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-  },
-  modalView: {
-    margin: 20,
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 35,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: '85%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  input: {
-    height: 50,
-    borderColor: '#E8ECF4',
-    borderWidth: 1,
-    borderRadius: 8,
-    width: '100%',
-    marginBottom: 20,
-    paddingHorizontal: 15,
-    fontSize: 18,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, minHeight: 300 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  modalItem: { flexDirection: 'row', justifyContent: 'space-between', padding: 15, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  modalItemText: { fontSize: 18 },
+  plusIcon: { fontSize: 18, color: '#007AFF', fontWeight: 'bold' },
+  closeButton: { marginTop: 20, alignItems: 'center', padding: 15 },
+  closeButtonText: { color: 'red', fontSize: 16 },
 });

@@ -10,14 +10,16 @@ module.exports = {
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     ios: {
+      // --- I've removed the redundant infoPlist permissions ---
+      // The 'expo-image-picker' plugin handles this.
       supportsTablet: true,
       config: {
         googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY
       },
-      // --- ADDED BUNDLE ID ---
-      // (Good practice to match your Android package)
       "bundleIdentifier": "com.manohara.healthvault"
     },
+    // --- The first 'plugins' array that was here has been REMOVED ---
+
     android: {
       "package": "com.manohara.healthvault",
       adaptiveIcon: {
@@ -30,7 +32,6 @@ module.exports = {
           apiKey: process.env.GOOGLE_MAPS_API_KEY
         }
       },
-      // --- ADDED NOTIFICATIONS PERMISSION ---
       "permissions": [
         "android.permission.NOTIFICATIONS"
       ]
@@ -40,6 +41,8 @@ module.exports = {
       output: "static",
       favicon: "./assets/images/favicon.png"
     },
+
+    // --- THIS IS THE ONLY 'plugins' ARRAY ---
     plugins: [
       "expo-router",
       [
@@ -53,13 +56,19 @@ module.exports = {
       ],
       "expo-sqlite",
       "expo-web-browser",
-
-      // --- ADDED NOTIFICATIONS PLUGIN ---
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/adaptive-icon.png", // Your notification icon
+          "icon": "./assets/images/adaptive-icon.png",
           "color": "#ffffff"
+        }
+      ],
+      // --- ADDED 'expo-image-picker' HERE ---
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "This app needs access to your photos to let you upload reports.",
+          "cameraPermission": "This app needs access to your camera to let you take photos of reports."
         }
       ]
     ],

@@ -1,4 +1,8 @@
 import React, { useState } from "react";
+// at top of file: add imports
+import * as ImagePicker from 'expo-image-picker';
+import { ActionSheetIOS, Platform } from 'react-native';
+
 import {
   View,
   Text,
@@ -52,27 +56,133 @@ export default function AddReport() {
   const [pickedFile, setPickedFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Pick file using DocumentPicker
-  const pickFile = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["image/*", "application/pdf"],
-        copyToCacheDirectory: true,
-      });
 
-      if (!result.canceled) {
-        const asset = result.assets[0];
-        setPickedFile({
-          uri: asset.uri,
-          name: asset.name,
-          mimeType: asset.mimeType,
+  // new pickFile implementation
+  const pickFile = async () => {
+    const openImageLibrary = async () => {
+      try {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission required', 'Please allow photo library access in Settings.');
+          return;
+        }
+
+        // NOTE: use ImagePicker.MediaType (new API)
+        const res = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images, // updated API
+          quality: 0.8,
+          allowsEditing: false,
         });
+
+        // normalize response for old/new SDKs:
+        // new SDK returns { canceled: boolean, assets: [ { uri, fileName, type, ... } ] }
+        // older SDK returned { cancelled: boolean, uri, ... } (British spelling)
+        if (res.canceled || res.cancelled) return;
+
+        const asset = Array.isArray(res.assets) && res.assets.length > 0 ? res.assets[0] : res;
+        const uri = asset.uri || asset.uri; // explicit
+        if (!uri) return; // safety
+
+        const name = asset.fileName || asset.name || uri.split('/').pop();
+        // Try to create a sensible mime type:
+        const ext = name && name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+        const mimeType =
+          asset.type && ext ? `${asset.type}/${ext}` : // asset.type is typically 'image'
+          asset.mimeType ||
+          (ext ? `image/${ext}` : 'image/jpeg');
+
+        setPickedFile({ uri, name, mimeType });
+      } catch (err) {
+        console.error('Image pick error', err);
+        Alert.alert('Error', 'Could not pick image.');
       }
-    } catch (error) {
-      console.error("Error picking document:", error);
-      Alert.alert("Error", "Could not select the file.");
+    };
+
+    const takePhoto = async () => {
+      try {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission required', 'Please allow camera access in Settings.');
+          return;
+        }
+
+        const res = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+        });
+
+        if (res.canceled || res.cancelled) return;
+        const asset = Array.isArray(res.assets) && res.assets.length ? res.assets[0] : res;
+        const uri = asset.uri;
+        if (!uri) return;
+        const name = asset.fileName || asset.name || uri.split('/').pop();
+        const ext = name && name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+        const mimeType = asset.type && ext ? `${asset.type}/${ext}` : (asset.mimeType || (ext ? `image/${ext}` : 'image/jpeg'));
+        setPickedFile({ uri, name, mimeType });
+      } catch (err) {
+        console.error('Camera error', err);
+        Alert.alert('Error', 'Could not open camera.');
+      }
+    };
+
+    const pickDocument = async () => {
+      try {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: ['application/pdf', 'image/*'],
+          copyToCacheDirectory: true,
+        });
+
+        // handle both shapes like earlier
+        if (result.type === 'success') {
+          const uri = result.uri;
+          const name = result.name || (uri ? uri.split('/').pop() : 'file');
+          const mimeType = result.mimeType || (name.includes('.') ? `application/${name.split('.').pop()}` : 'application/octet-stream');
+          setPickedFile({ uri, name, mimeType });
+        } else if (!result.canceled && result.assets && result.assets.length > 0) {
+          const asset = result.assets[0];
+          setPickedFile({
+            uri: asset.uri,
+            name: asset.name,
+            mimeType: asset.mimeType,
+          });
+        } else {
+          // user cancelled
+        }
+      } catch (err) {
+        console.error('Document pick error', err);
+        Alert.alert('Error', 'Could not pick document.');
+      }
+    };
+
+    // present choices
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Choose from Photos', 'Take Photo', 'Pick Document'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) openImageLibrary();
+          else if (buttonIndex === 2) takePhoto();
+          else if (buttonIndex === 3) pickDocument();
+        }
+      );
+    } else {
+      Alert.alert(
+        'Upload Report',
+        'Choose source',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Choose from Photos', onPress: openImageLibrary },
+          { text: 'Take Photo', onPress: takePhoto },
+          { text: 'Pick Document', onPress: pickDocument },
+        ],
+        { cancelable: true }
+      );
     }
   };
+
+
 
   // Save file to local filesystem
   const saveFileToFS = async (file) => {

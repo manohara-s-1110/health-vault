@@ -6,8 +6,8 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint"
   },
@@ -42,7 +42,7 @@
     "expo-symbols": "~1.0.7",
     "expo-system-ui": "~6.0.8",
     "expo-web-browser": "~15.0.8",
-    "firebase": "^12.5.0",
+    "firebase": "^12.6.0",
     "pouchdb-adapter-idb": "^9.0.0",
     "pouchdb-adapter-react-native-sqlite": "^4.1.2",
     "react": "19.1.0",

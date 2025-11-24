@@ -178,14 +178,19 @@ export default function ExploreScreen() {
           </MapView>
 
           {/* If bottom-sheet available, render it; otherwise fallback to a simple list */}
-          {bottomSheetAvailable && BottomSheetComp ? (
-            <BottomSheetComp index={1} snapPoints={snapPoints}>
-              {/* dynamic import of BottomSheetFlatList is tricky; render a simple array map as fallback inside */}
-              <View style={styles.listContainer}>
-                <Text style={styles.listHeader}>Nearby Hospitals & Pharmacies</Text>
-                <FlatList data={places} renderItem={renderPlaceItem} keyExtractor={i => i.place_id} />
-              </View>
-            </BottomSheetComp>
+          {bottomSheetAvailable && BottomSheetComp && BottomSheetFlatListComp ? (
+                      <BottomSheetComp index={1} snapPoints={snapPoints}>
+                        {/* Use BottomSheetFlatListComp for correct scrolling */}
+                        <BottomSheetFlatListComp
+                          data={places}
+                          renderItem={renderPlaceItem}
+                          keyExtractor={i => i.place_id}
+                          contentContainerStyle={styles.listContentContainer}
+                          ListHeaderComponent={
+                            <Text style={styles.listHeader}>Nearby Hospitals & Pharmacies</Text>
+                          }
+                        />
+                      </BottomSheetComp>
           ) : (
             // fallback: show a white panel anchored at bottom with list
             <View style={styles.fallbackList}>
@@ -201,6 +206,9 @@ export default function ExploreScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  listContentContainer: {
+      paddingHorizontal: 20,
+    },
   container: { flex: 1 },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   loaderText: { marginTop: 10, fontSize: 16, color: '#8391A1' },
