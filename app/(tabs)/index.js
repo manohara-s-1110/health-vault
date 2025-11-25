@@ -13,11 +13,16 @@ import {
 } from 'react-native';
 
 // Import the registry
+// (Assuming index.js is in 'app' folder and widgets is in 'app/widgets')
 import { AVAILABLE_WIDGETS } from '../widgets/widgetRegistry.js';
+import UpdateDataModal from '../widgets/UpdateDataModal.js';
 
 export default function App() {
   const [activeWidgets, setActiveWidgets] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
+
+  // State to track which widget is being edited
+  const [selectedWidget, setSelectedWidget] = useState(null);
 
   // Add a widget based on the registry config
   const handleAddWidget = (widgetConfig) => {
@@ -66,6 +71,9 @@ export default function App() {
               style={[styles.widgetCard, { backgroundColor: widget.color }]}
               onLongPress={() => confirmDelete(widget.id)}
               delayLongPress={500}
+              // --- THIS WAS MISSING ---
+              // This triggers the modal to open with the correct widget data
+              onPress={() => setSelectedWidget(widget)}
             >
               {/* Dynamic Component Rendering */}
               <widget.component />
@@ -74,7 +82,7 @@ export default function App() {
         )}
       </ScrollView>
 
-      {/* Widget Selection Modal */}
+      {/* Widget Selection Modal (Add New) */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -105,6 +113,13 @@ export default function App() {
           </View>
         </View>
       </Modal>
+
+      {/* Data Entry Modal (Edit Existing) */}
+      <UpdateDataModal
+        visible={!!selectedWidget}
+        widgetConfig={selectedWidget}
+        onClose={() => setSelectedWidget(null)}
+      />
 
     </SafeAreaView>
   );

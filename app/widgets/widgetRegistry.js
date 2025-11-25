@@ -1,15 +1,52 @@
 import WeightWidget from './WeightWidget';
+import BloodGroupWidget from './BloodGroupWidget';
+import HeightWidget from './HeightWidget';
+import BMIWidget from './BMIWidget';
 
-// format: { id, label, component, defaultColor }
 export const AVAILABLE_WIDGETS = [
+   {
+       type: 'height', // <--- 2. Add New Object
+       label: 'Height Tracker',
+       component: HeightWidget,
+       color: '#E8F5E9', // Light Green
+       dataConfig: {
+         field: 'height',          // Firebase field
+         title: 'Update Height',
+         unit: 'cm',
+         inputType: 'numeric',
+       }
+     },
   {
     type: 'weight',
     label: 'Weight Tracker',
     component: WeightWidget,
-    color: '#E3F2FD', // Light Blue
+    color: '#E3F2FD',
+    // --- NEW CONFIG ---
+    dataConfig: {
+      field: 'weight',          // Field name in medicalInfo
+      title: 'Update Weight',   // Modal title
+      unit: 'kg',               // Unit label
+      inputType: 'numeric',     // Keyboard type
+    }
   },
-  // To add a new widget later:
-  // 1. Create NewWidget.js
-  // 2. Import it here
-  // 3. Add object: { type: 'new', label: 'New Widget', component: NewWidget, color: '#...' }
+  {
+    type: 'bloodGroup',
+    label: 'Blood Group',
+    component: BloodGroupWidget,
+    color: '#FFEBEE',
+    // --- NEW CONFIG ---
+    dataConfig: {
+      field: 'bloodGroup',
+      title: 'Update Blood Type',
+      unit: '',
+      inputType: 'default',     // Standard text keyboard
+    }
+  },
+  {
+      type: 'bmi',
+      label: 'BMI Calculator', // <--- 2. Add BMI Widget
+      component: BMIWidget,
+      color: '#F3E5F5', // Light Purple
+      // Note: No dataConfig here! It is read-only.
+    },
 ];

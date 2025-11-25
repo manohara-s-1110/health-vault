@@ -1,87 +1,227 @@
-import React from 'react';
-import { StyleSheet, View, Text, SafeAreaView,TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet, View, Text, SafeAreaView, TouchableOpacity,
+  TextInput, Alert, ActivityIndicator, KeyboardAvoidingView,
+  Platform, ScrollView
+} from 'react-native';
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 
+// FIREBASE IMPORTS
+import { doc, onSnapshot, arrayUnion, arrayRemove, setDoc, getDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth'; // <--- IMPORT AUTH
+import { db } from '../firebaseConfig';
 
 const EmergencyScreen = () => {
+  const [user, setUser] = useState(null); // Store the current user object
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [contacts, setContacts] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+
+  // 1. Get the Current Logged In User & Listen for Data
+  useEffect(() => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      Alert.alert("Error", "No user logged in");
+      return;
+    }
+
+    setUser(currentUser); // Save user to state
+    const userDocRef = doc(db, "users", currentUser.uid); // <--- USE REAL UID
+
+    const unsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const userData = docSnapshot.data();
+        const fetchedContacts = userData.emergencyContacts || [];
+        setContacts(fetchedContacts);
+
+        if (fetchedContacts.length === 0) setShowForm(true);
+      } else {
+        // Doc doesn't exist yet? No problem, we will create it when saving.
+        setContacts([]);
+        setShowForm(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Add Contact (Uses setDoc with merge to prevent crashes)
+  const handleSaveContact = async () => {
+    if (!contactName.trim() || !contactPhone.trim()) {
+      Alert.alert('Error', 'Please fill in both fields.');
+      return;
+    }
+
+    if (!user) return; // Safety check
+
+    setIsLoading(true);
+    const newContact = {
+      name: contactName,
+      phone: contactPhone,
+      id: Date.now().toString()
+    };
+
+    try {
+      const userDocRef = doc(db, "users", user.uid); // <--- USE REAL UID
+
+      // 'setDoc' with 'merge: true' works even if the document doesn't exist yet
+      await setDoc(userDocRef, {
+        emergencyContacts: arrayUnion(newContact)
+      }, { merge: true });
+
+      setContactName('');
+      setContactPhone('');
+      setShowForm(false);
+      Alert.alert("Success", "Contact added to your profile.");
+    } catch (error) {
+      Alert.alert('Error', 'Could not update profile.');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 3. Delete Contact
+  const handleDelete = async (contactToDelete) => {
+    if (!user) return;
+
+    try {
+      const userDocRef = doc(db, "users", user.uid); // <--- USE REAL UID
+
+      await setDoc(userDocRef, {
+        emergencyContacts: arrayRemove(contactToDelete)
+      }, { merge: true });
+
+    } catch (error) {
+      console.error("Error deleting:", error);
+      Alert.alert("Error", "Could not delete contact.");
+    }
+  };
+
   return (
-    // SafeAreaView is good practice, especially for iOS
     <SafeAreaView style={styles.safeArea}>
-      {/* This is the main container that uses flexbox
-        to center its child.
-      */}
-      <View style={styles.container}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                        <Feather name="arrow-left" size={22} color="#1E232C" />
-                </TouchableOpacity>
-         <Text style={styles.header}>Emergency Screen</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.container}>
 
-        {/* This is the emergency alert box */}
-        <View style={styles.emergencyBox}>
-          <Text style={styles.headerText}>EMERGENCY ALERT</Text>
-          <Text style={styles.bodyText}>
-            This is an important message. Please read carefully and follow all
-            instructions.
-          </Text>
-        </View>
+          <View style={styles.topRow}>
+             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                <Feather name="arrow-left" size={22} color="#1E232C" />
+             </TouchableOpacity>
+             <Text style={styles.header}>Emergency Contacts</Text>
+          </View>
 
-      </View>
+          {/* LIST OF CONTACTS */}
+          {contacts.length > 0 && (
+            <View style={styles.listContainer}>
+              {contacts.map((contact, index) => (
+                <View key={contact.id || index} style={styles.contactCard}>
+                  <View style={styles.contactInfo}>
+                    <Text style={styles.contactName}>{contact.name}</Text>
+                    <Text style={styles.contactPhone}>{contact.phone}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => handleDelete(contact)}>
+                    <Feather name="trash-2" size={20} color="#FF4D4D" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* ADD BUTTON / FORM */}
+          {!showForm ? (
+            <TouchableOpacity style={styles.addButton} onPress={() => setShowForm(true)}>
+              <Feather name="plus" size={20} color="#fff" />
+              <Text style={styles.addButtonText}>Add Another Contact</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.formContainer}>
+              <View style={styles.formHeaderRow}>
+                <Text style={styles.formTitle}>New Contact Details</Text>
+                {contacts.length > 0 && (
+                  <TouchableOpacity onPress={() => setShowForm(false)}>
+                     <Feather name="x" size={24} color="#666" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <Text style={styles.label}>Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Mom"
+                value={contactName}
+                onChangeText={setContactName}
+              />
+
+              <Text style={styles.label}>Phone Number</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. +91 9876543210"
+                value={contactPhone}
+                onChangeText={setContactPhone}
+                keyboardType="phone-pad"
+              />
+
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveContact} disabled={isLoading}>
+                {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Save Contact</Text>}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={styles.footerNote}>
+             <Feather name="shield" size={16} color="#888" />
+             <Text style={styles.footerText}>Synced to your HealthVault profile.</Text>
+          </View>
+
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-// This is where all the styles live, similar to a CSS file
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F7F8FA" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { fontSize: 22,textAlign: 'center', fontWeight: "700", color: "#1E232C", marginBottom: 16 },
-  label: { fontSize: 14, color: "#6A707C", marginBottom: 8 },
-  safeArea: {
-    flex: 1, // Ensures the safe area fills the whole screen
+  container: { flexGrow: 1, padding: 20 },
+  topRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  backBtn: { padding: 10, backgroundColor: '#fff', borderRadius: 10, marginRight: 15, elevation: 2 },
+  header: { fontSize: 22, fontWeight: "700", color: "#1E232C" },
+  listContainer: { marginBottom: 20 },
+  contactCard: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#FFF', padding: 16, borderRadius: 12, marginBottom: 10,
+    elevation: 2, borderLeftWidth: 5, borderLeftColor: '#1E232C'
   },
-  // 1. This container fills the screen and centers content
-  container: {
-    flex: 1, // Tells the view to take up all available space
-    justifyContent: 'top', // Vertically centers content (main axis)
-    alignItems: 'left',    // Horizontally centers content (cross axis)
-    backgroundColor: '#f4f4f4', // Light gray background
+  contactName: { fontSize: 16, fontWeight: '600', color: '#1E232C' },
+  contactPhone: { fontSize: 14, color: '#666', marginTop: 2 },
+  addButton: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#1E232C', padding: 16, borderRadius: 12, marginBottom: 20,
   },
-  // 2. This is the styled emergency box
-  emergencyBox: {
-    width: '90%', // 90% of the parent's width
-    maxWidth: 500,
-    padding: 25,
-    backgroundColor: '#fff0f0',
-    borderWidth: 2,
-    borderColor: '#d9534f',
-    borderRadius: 8,
-    alignItems: 'center',
-
-    // --- Platform-specific shadows ---
-    // Android
-    elevation: 5,
-
-    // iOS
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  addButtonText: { color: '#fff', fontWeight: '600', marginLeft: 8 },
+  formContainer: {
+    backgroundColor: '#FFF', padding: 20, borderRadius: 16, borderWidth: 1,
+    borderColor: '#E8ECF4', marginBottom: 20,
   },
-  // 3. Styles for the text elements
-  headerText: {
-    fontSize: 24, // React Native uses unitless density-pixels
-    fontWeight: 'bold',
-    color: '#d9534f',
-    textAlign: 'center',
-    marginBottom: 10,
+  formHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
+  formTitle: { fontSize: 16, fontWeight: '700', color: '#1E232C' },
+  label: { fontSize: 14, fontWeight: '500', color: '#1E232C', marginBottom: 6 },
+  input: {
+    backgroundColor: '#F7F8FA', borderWidth: 1, borderColor: '#E8ECF4', borderRadius: 8,
+    padding: 12, fontSize: 16, marginBottom: 16, color: '#1E232C',
   },
-  bodyText: {
-    fontSize: 16,
-    color: '#333',
-    textAlign: 'center',
-    lineHeight: 22,
+  saveButton: {
+    backgroundColor: '#28a745', borderRadius: 8, paddingVertical: 14, alignItems: 'center',
   },
+  saveButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  footerNote: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 'auto' },
+  footerText: { color: '#888', marginLeft: 6, fontSize: 12 },
 });
 
 export default EmergencyScreen;
