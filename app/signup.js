@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { auth } from '../firebaseConfig'; // ✅ Import firebase auth
+import { auth } from '../firebaseConfig'; 
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 
 const CustomTextInput = ({ icon, placeholder, value, onChangeText, secureTextEntry = false, keyboardType = 'default' }) => {
@@ -111,9 +111,7 @@ export default function SignUpScreen() {
   );
 }
 
-// Styles (same as your original) ...
 const styles = StyleSheet.create({
-  // keep same as before
   safeArea: { flex: 1, backgroundColor: '#F7F8FA' },
   scrollContainer: { padding: 24, flexGrow: 1, justifyContent: 'center' },
   backButton: { marginBottom: 24, alignSelf: 'flex-start' },
