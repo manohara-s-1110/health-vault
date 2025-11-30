@@ -2,6 +2,9 @@ import WeightWidget from './WeightWidget';
 import BloodGroupWidget from './BloodGroupWidget';
 import HeightWidget from './HeightWidget';
 import BMIWidget from './BMIWidget';
+import HeartRateWidget from './HeartRateWidget';
+import WaterWidget from './WaterWidget';
+
 
 export const AVAILABLE_WIDGETS = [
    {
@@ -16,6 +19,18 @@ export const AVAILABLE_WIDGETS = [
          inputType: 'numeric',
        }
      },
+   {
+         type: 'water', // <--- 2. Add Water Widget
+         label: 'Water Tracker',
+         component: WaterWidget,
+         color: '#E1F5FE', // Very Light Blue
+         dataConfig: {
+           field: 'water',
+           title: 'Update Water Intake',
+           unit: 'ml',
+           inputType: 'numeric',
+         }
+       },
   {
     type: 'weight',
     label: 'Weight Tracker',
@@ -42,6 +57,18 @@ export const AVAILABLE_WIDGETS = [
       inputType: 'default',     // Standard text keyboard
     }
   },
+  {
+      type: 'heartRate', // <--- 2. Add Heart Rate
+      label: 'Heart Rate',
+      component: HeartRateWidget,
+      color: '#FCE4EC', // Light Pink
+      dataConfig: {
+        field: 'heartRate',
+        title: 'Update Heart Rate',
+        unit: 'bpm',
+        inputType: 'numeric',
+      }
+    },
   {
       type: 'bmi',
       label: 'BMI Calculator', // <--- 2. Add BMI Widget

@@ -11,20 +11,38 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 
 // Import the registry
-// (Assuming index.js is in 'app' folder and widgets is in 'app/widgets')
 import { AVAILABLE_WIDGETS } from '../widgets/widgetRegistry.js';
 import UpdateDataModal from '../widgets/UpdateDataModal.js';
+import ImageCarousel from '../ImageCarousel/ImageCarousel.js';
 
 export default function App() {
-  const [activeWidgets, setActiveWidgets] = useState([]);
-  const [modalVisible, setModalVisible] = useState(false);
+  const router = useRouter();
 
-  // State to track which widget is being edited
+  // --- CHANGED: Initialize with 4 Default Widgets ---
+  const [activeWidgets, setActiveWidgets] = useState(() => {
+    // 1. Define the ID strings of the widgets you want (must match 'type' in registry)
+    const defaultTypes = ['bmi', 'weight', 'height', 'water'];
+
+    // 2. Find them in the registry and create the widget objects
+    return defaultTypes.map((type, index) => {
+      const widgetConfig = AVAILABLE_WIDGETS.find(w => w.type === type);
+      if (widgetConfig) {
+        return {
+          id: `default-${index}`, // Unique ID for the list
+          ...widgetConfig,
+        };
+      }
+      return null;
+    }).filter(Boolean); // Remove any nulls if a type wasn't found
+  });
+  // ----------------------------------------------------
+
+  const [modalVisible, setModalVisible] = useState(false);
   const [selectedWidget, setSelectedWidget] = useState(null);
 
-  // Add a widget based on the registry config
   const handleAddWidget = (widgetConfig) => {
     const newWidget = {
       id: Date.now().toString(),
@@ -60,29 +78,49 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      {/* Dashboard Grid */}
-      <ScrollView contentContainerStyle={styles.widgetContainer}>
-        {activeWidgets.length === 0 ? (
-          <Text style={styles.emptyText}>Tap "+ Add" to choose a widget</Text>
-        ) : (
-          activeWidgets.map((widget) => (
-            <Pressable
-              key={widget.id}
-              style={[styles.widgetCard, { backgroundColor: widget.color }]}
-              onLongPress={() => confirmDelete(widget.id)}
-              delayLongPress={500}
-              // --- THIS WAS MISSING ---
-              // This triggers the modal to open with the correct widget data
-              onPress={() => setSelectedWidget(widget)}
-            >
-              {/* Dynamic Component Rendering */}
-              <widget.component />
-            </Pressable>
-          ))
-        )}
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+
+        {/* Image Carousel */}
+        <ImageCarousel />
+
+        {/* Latest Report Section */}
+        <TouchableOpacity
+          style={styles.reportSection}
+          onPress={() => router.push('/reports')}
+        >
+          <View style={styles.reportContent}>
+            <View style={styles.reportIconBadge}>
+              <Text style={{ fontSize: 18 }}>📄</Text>
+            </View>
+            <View>
+              <Text style={styles.reportTitle}>Latest Report</Text>
+              <Text style={styles.reportSubtitle}>Blood Test • 25 Nov</Text>
+            </View>
+          </View>
+          <Text style={styles.arrowIcon}>›</Text>
+        </TouchableOpacity>
+
+        {/* Dashboard Widgets */}
+        <View style={styles.widgetContainer}>
+          {activeWidgets.length === 0 ? (
+            <Text style={styles.emptyText}>Tap "+ Add" to choose a widget</Text>
+          ) : (
+            activeWidgets.map((widget) => (
+              <Pressable
+                key={widget.id}
+                style={[styles.widgetCard, { backgroundColor: widget.color }]}
+                onLongPress={() => confirmDelete(widget.id)}
+                delayLongPress={500}
+                onPress={() => setSelectedWidget(widget)}
+              >
+                <widget.component />
+              </Pressable>
+            ))
+          )}
+        </View>
       </ScrollView>
 
-      {/* Widget Selection Modal (Add New) */}
+      {/* Widget Selection Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -114,7 +152,7 @@ export default function App() {
         </View>
       </Modal>
 
-      {/* Data Entry Modal (Edit Existing) */}
+      {/* Data Update Modal */}
       <UpdateDataModal
         visible={!!selectedWidget}
         widgetConfig={selectedWidget}
@@ -135,7 +173,28 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333' },
   addButton: { backgroundColor: '#007AFF', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20 },
   addButtonText: { color: '#FFF', fontWeight: '600' },
-  widgetContainer: { padding: 20, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+
+  reportSection: {
+    backgroundColor: 'white',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 15,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, elevation: 2,
+  },
+  reportContent: { flexDirection: 'row', alignItems: 'center' },
+  reportIconBadge: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF3E0',
+    justifyContent: 'center', alignItems: 'center', marginRight: 12
+  },
+  reportTitle: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+  reportSubtitle: { fontSize: 12, color: '#888', marginTop: 2 },
+  arrowIcon: { fontSize: 24, color: '#CCC', fontWeight: '300' },
+
+  widgetContainer: { padding: 20, paddingTop: 0, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#888', width: '100%' },
   widgetCard: {
     width: '48%', aspectRatio: 1, borderRadius: 16, padding: 15, marginBottom: 15,
