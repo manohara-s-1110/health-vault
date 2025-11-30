@@ -14,13 +14,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ✅ Securely read config from app.config.js (which reads from .env)
 const firebaseConfig = {
-  apiKey: Constants.expoConfig.extra.FIREBASE_API_KEY,
-  authDomain: Constants.expoConfig.extra.FIREBASE_AUTH_DOMAIN,
-  projectId: Constants.expoConfig.extra.FIREBASE_PROJECT_ID,
-  storageBucket: Constants.expoConfig.extra.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: Constants.expoConfig.extra.FIREBASE_MESSAGING_SENDER_ID,
-  appId: Constants.expoConfig.extra.FIREBASE_APP_ID,
-  measurementId: Constants.expoConfig.extra.FIREBASE_MEASUREMENT_ID, 
+  apiKey: "AIzaSyDvnoHJ83YRRhs_VUPwakV-lkbbfi0s_jQ",
+  authDomain: "healthvault-auth-1d5d8.firebaseapp.com",
+  projectId: "healthvault-auth-1d5d8",
+  storageBucket: "healthvault-auth-1d5d8.firebasestorage.app",
+  messagingSenderId: "968505675087",
+  appId: "1:968505675087:web:68a83a5388c42994c0893a",
+  measurementId: "G-J5VXKC6DCE"
 };
 
 // ✅ Initialize Firebase app only once

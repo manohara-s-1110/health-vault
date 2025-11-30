@@ -21,24 +21,20 @@ import ImageCarousel from '../ImageCarousel/ImageCarousel.js';
 export default function App() {
   const router = useRouter();
 
-  // --- CHANGED: Initialize with 4 Default Widgets ---
+  // Initialize with 4 Default Widgets
   const [activeWidgets, setActiveWidgets] = useState(() => {
-    // 1. Define the ID strings of the widgets you want (must match 'type' in registry)
     const defaultTypes = ['bmi', 'weight', 'height', 'water'];
-
-    // 2. Find them in the registry and create the widget objects
     return defaultTypes.map((type, index) => {
       const widgetConfig = AVAILABLE_WIDGETS.find(w => w.type === type);
       if (widgetConfig) {
         return {
-          id: `default-${index}`, // Unique ID for the list
+          id: `default-${index}`,
           ...widgetConfig,
         };
       }
       return null;
-    }).filter(Boolean); // Remove any nulls if a type wasn't found
+    }).filter(Boolean);
   });
-  // ----------------------------------------------------
 
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedWidget, setSelectedWidget] = useState(null);
@@ -63,6 +59,40 @@ export default function App() {
     ]);
   };
 
+  // --- Emergency Handler ---
+  const handleEmergency = () => {
+    Alert.alert(
+      "Emergency SOS",
+      "Are you sure? Your saved contacts will be notified immediately.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          style: "destructive",
+          onPress: () => {
+            // Mock Notification Logic
+            setTimeout(() => {
+              Alert.alert(
+                "Contacts Notified",
+                "Your emergency contacts have been alerted.\n\nDo you want to find the nearest hospital?",
+                [
+                  { text: "No", style: "cancel" },
+                  {
+                    text: "Find Hospital",
+                    onPress: () => {
+                      // --- UNCOMMENTED: Navigates to Explore Page ---
+                      router.push('/explore');
+                    }
+                  }
+                ]
+              );
+            }, 500);
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -80,10 +110,10 @@ export default function App() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
 
-        {/* Image Carousel */}
+        {/* 1. Image Carousel */}
         <ImageCarousel />
 
-        {/* Latest Report Section */}
+        {/* 2. Latest Report Section */}
         <TouchableOpacity
           style={styles.reportSection}
           onPress={() => router.push('/reports')}
@@ -100,7 +130,7 @@ export default function App() {
           <Text style={styles.arrowIcon}>›</Text>
         </TouchableOpacity>
 
-        {/* Dashboard Widgets */}
+        {/* 3. Dashboard Widgets */}
         <View style={styles.widgetContainer}>
           {activeWidgets.length === 0 ? (
             <Text style={styles.emptyText}>Tap "+ Add" to choose a widget</Text>
@@ -118,6 +148,24 @@ export default function App() {
             ))
           )}
         </View>
+
+        {/* 4. Emergency Section */}
+        <View style={styles.emergencyContainer}>
+          <TouchableOpacity
+            style={styles.emergencyButton}
+            activeOpacity={0.8}
+            onPress={handleEmergency}
+          >
+            <View style={styles.emergencyIconContainer}>
+              <Text style={styles.emergencyIcon}>🚨</Text>
+            </View>
+            <View style={styles.emergencyTextContainer}>
+              <Text style={styles.emergencyTitle}>EMERGENCY SOS</Text>
+              <Text style={styles.emergencySubtitle}>Notify contacts & find hospital</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
 
       {/* Widget Selection Modal */}
@@ -174,6 +222,7 @@ const styles = StyleSheet.create({
   addButton: { backgroundColor: '#007AFF', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20 },
   addButtonText: { color: '#FFF', fontWeight: '600' },
 
+  // Report Section Styles
   reportSection: {
     backgroundColor: 'white',
     marginHorizontal: 20,
@@ -194,12 +243,52 @@ const styles = StyleSheet.create({
   reportSubtitle: { fontSize: 12, color: '#888', marginTop: 2 },
   arrowIcon: { fontSize: 24, color: '#CCC', fontWeight: '300' },
 
+  // Widget Styles
   widgetContainer: { padding: 20, paddingTop: 0, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#888', width: '100%' },
   widgetCard: {
     width: '48%', aspectRatio: 1, borderRadius: 16, padding: 15, marginBottom: 15,
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, elevation: 3,
   },
+
+  // Emergency Section Styles
+  emergencyContainer: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  emergencyButton: {
+    backgroundColor: '#FFEBEE',
+    borderColor: '#FFCDD2',
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: "#D32F2F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    elevation: 4,
+  },
+  emergencyIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FF5252',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+    shadowColor: "#D32F2F",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    elevation: 5,
+  },
+  emergencyIcon: { fontSize: 24 },
+  emergencyTextContainer: { flex: 1 },
+  emergencyTitle: { fontSize: 18, fontWeight: '900', color: '#C62828', letterSpacing: 0.5 },
+  emergencySubtitle: { fontSize: 13, color: '#D32F2F', fontWeight: '500', marginTop: 2 },
+
+  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, minHeight: 300 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },

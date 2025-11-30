@@ -1,5 +1,4 @@
-// app/(tabs)/explore.js
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, StatusBar, 
   ActivityIndicator, TouchableOpacity, Linking, Platform, FlatList 
@@ -9,44 +8,17 @@ import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-const GOOGLE_MAPS_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
+// --- SAFE FALLBACK: If API Key is missing, use empty string to prevent crash ---
+const GOOGLE_MAPS_API_KEY = Constants.expoConfig?.extra?.GOOGLE_MAPS_API_KEY || "";
 
 export default function ExploreScreen() {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [BottomSheetComp, setBottomSheetComp] = useState(null);
-  const [BottomSheetFlatListComp, setBottomSheetFlatListComp] = useState(null);
-  const [bottomSheetAvailable, setBottomSheetAvailable] = useState(false);
 
   const mapRef = useRef(null);
-
-  const snapPoints = useMemo(() => ['25%', '50%', '90%'], []);
-
-  // Try to lazy-load bottom-sheet after mount
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const mod = await import('@gorhom/bottom-sheet').catch(() => null);
-        if (mod && mounted) {
-          setBottomSheetComp(() => mod.default || mod.BottomSheet || mod);
-          setBottomSheetFlatListComp(() => mod.BottomSheetFlatList || mod.FlatList || mod);
-          setBottomSheetAvailable(true);
-        } else {
-          console.warn('Bottom sheet module not available — falling back to simple list.');
-          setBottomSheetAvailable(false);
-        }
-      } catch (err) {
-        console.warn('Failed to import bottom-sheet dynamically:', err);
-        setBottomSheetAvailable(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
 
   // 1. Get User's Location
   useEffect(() => {
@@ -69,28 +41,31 @@ export default function ExploreScreen() {
     })();
   }, []);
 
-  // 2. Fetch Nearby Places once we have the location
+  // 2. Fetch Nearby Places
   useEffect(() => {
     if (location) fetchNearbyPlaces(location);
   }, [location]);
 
   const fetchNearbyPlaces = async (coords) => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      console.warn("Google Maps API Key is missing.");
+      setLoading(false);
+      return;
+    }
+
     const { latitude, longitude } = coords;
     const radius = 5000;
     const hospitalUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=hospital&key=${GOOGLE_MAPS_API_KEY}`;
-    const pharmacyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=pharmacy&key=${GOOGLE_MAPS_API_KEY}`;
-
+    
     try {
-      const [hospitalResponse, pharmacyResponse] = await Promise.all([fetch(hospitalUrl), fetch(pharmacyUrl)]);
-      const hospitalData = await hospitalResponse.json();
-      const pharmacyData = await pharmacyResponse.json();
-      const combinedResults = [...(hospitalData.results || []), ...(pharmacyData.results || [])];
-      const uniquePlaces = Array.from(new Map(combinedResults.map(p => [p.place_id, p])).values());
-      setPlaces(uniquePlaces);
+      const response = await fetch(hospitalUrl);
+      const data = await response.json();
+      
+      if (data.results) {
+        setPlaces(data.results);
+      }
     } catch (error) {
       console.error("Error fetching places:", error);
-      setErrorMsg("Failed to load nearby places.");
-      setPlaces([]);
     } finally {
       setLoading(false);
     }
@@ -99,7 +74,7 @@ export default function ExploreScreen() {
   const openInMaps = (lat, lng) => {
     const scheme = Platform.OS === 'ios' ? 'maps:' : 'geo:';
     const url = `${scheme}${lat},${lng}`;
-    Linking.openURL(url).catch(() => {});
+    Linking.openURL(url).catch(() => alert("Cannot open maps"));
   };
 
   const renderPlaceItem = ({ item }) => (
@@ -115,151 +90,121 @@ export default function ExploreScreen() {
       }}
     >
       <View style={styles.itemIcon}>
-        <Ionicons name={item.types?.includes('hospital') ? "medkit" : "medical"} size={24} color="#4A90E2" />
+        <Ionicons name="medkit" size={24} color="#FF5252" />
       </View>
       <View style={styles.itemTextContainer}>
         <Text style={styles.itemTitle}>{item.name}</Text>
         <Text style={styles.itemVicinity}>{item.vicinity}</Text>
       </View>
-      <TouchableOpacity onPress={() => openInMaps(item.geometry.location.lat, item.geometry.location.lng)}>
-        <Ionicons name="navigate-circle-outline" size={30} color="#4A90E2" />
+      <TouchableOpacity 
+        style={styles.navButton}
+        onPress={() => openInMaps(item.geometry.location.lat, item.geometry.location.lng)}
+      >
+        <Ionicons name="navigate" size={20} color="#FFF" />
       </TouchableOpacity>
     </TouchableOpacity>
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" />
-          <Text style={styles.loaderText}>Finding nearby places...</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loaderText}>Locating you...</Text>
+      </View>
     );
   }
 
   if (errorMsg) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loaderContainer}>
-          <Text style={styles.title}>{errorMsg}</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.loaderContainer}>
+        <Text style={styles.errorText}>{errorMsg}</Text>
+      </View>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.container}>
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            initialRegion={{
-              latitude: location?.latitude || 0,
-              longitude: location?.longitude || 0,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
-            showsUserLocation={true}
-          >
-            {places.map(place => (
-              <Marker
-                key={place.place_id}
-                coordinate={{
-                  latitude: place.geometry.location.lat,
-                  longitude: place.geometry.location.lng,
-                }}
-                title={place.name}
-                pinColor={place.types?.includes('hospital') ? 'red' : 'blue'}
-              />
-            ))}
-          </MapView>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      <View style={styles.mapContainer}>
+        <MapView
+          ref={mapRef}
+          style={StyleSheet.absoluteFill}
+          initialRegion={{
+            latitude: location?.latitude || 37.78825,
+            longitude: location?.longitude || -122.4324,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }}
+          showsUserLocation={true}
+        >
+          {places.map((place, index) => (
+            <Marker
+              key={index}
+              coordinate={{
+                latitude: place.geometry.location.lat,
+                longitude: place.geometry.location.lng,
+              }}
+              title={place.name}
+              pinColor="red"
+            />
+          ))}
+        </MapView>
+      </View>
 
-          {/* If bottom-sheet available, render it; otherwise fallback to a simple list */}
-          {bottomSheetAvailable && BottomSheetComp && BottomSheetFlatListComp ? (
-                      <BottomSheetComp index={1} snapPoints={snapPoints}>
-                        {/* Use BottomSheetFlatListComp for correct scrolling */}
-                        <BottomSheetFlatListComp
-                          data={places}
-                          renderItem={renderPlaceItem}
-                          keyExtractor={i => i.place_id}
-                          contentContainerStyle={styles.listContentContainer}
-                          ListHeaderComponent={
-                            <Text style={styles.listHeader}>Nearby Hospitals & Pharmacies</Text>
-                          }
-                        />
-                      </BottomSheetComp>
-          ) : (
-            // fallback: show a white panel anchored at bottom with list
-            <View style={styles.fallbackList}>
-              <Text style={styles.listHeader}>Nearby Hospitals & Pharmacies</Text>
-              <FlatList data={places} renderItem={renderPlaceItem} keyExtractor={i => i.place_id} />
-            </View>
-          )}
-        </View>
-      </SafeAreaView>
-    </GestureHandlerRootView>
+      {/* --- Simple Bottom List (No extra libraries needed) --- */}
+      <View style={styles.bottomListContainer}>
+        <Text style={styles.listHeader}>Nearby Hospitals</Text>
+        {places.length === 0 ? (
+          <Text style={styles.noPlacesText}>No hospitals found nearby.</Text>
+        ) : (
+          <FlatList 
+            data={places} 
+            renderItem={renderPlaceItem} 
+            keyExtractor={(item, index) => index.toString()} 
+            contentContainerStyle={{ paddingBottom: 20 }}
+          />
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
-  listContentContainer: {
-      paddingHorizontal: 20,
-    },
-  container: { flex: 1 },
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  loaderText: { marginTop: 10, fontSize: 16, color: '#8391A1' },
-  title: { fontSize: 18, fontWeight: 'bold', color: '#1E232C', textAlign: 'center' },
-  map: {
-    ...StyleSheet.absoluteFillObject,
+  container: { flex: 1, backgroundColor: '#FFF' },
+  mapContainer: { flex: 1 }, // Map takes top half
+  
+  // Bottom Panel Styles
+  bottomListContainer: { 
+    height: '40%', // Takes bottom 40% of screen
+    backgroundColor: 'white', 
+    borderTopLeftRadius: 20, 
+    borderTopRightRadius: 20, 
+    padding: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    elevation: 5,
   },
-  listContainer: {
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
-  },
-  listHeader: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1E232C',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
+  listHeader: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#333' },
+  
+  // Item Styles
   itemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8ECF4',
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: '#F0F0F0'
   },
-  itemIcon: {
-    marginRight: 15,
+  itemIcon: { marginRight: 15, width: 30, alignItems: 'center' },
+  itemTextContainer: { flex: 1 },
+  itemTitle: { fontSize: 16, fontWeight: '600', color: '#333' },
+  itemVicinity: { fontSize: 12, color: '#888', marginTop: 2 },
+  navButton: { 
+    backgroundColor: '#007AFF', padding: 8, borderRadius: 8, 
+    justifyContent: 'center', alignItems: 'center' 
   },
-  itemTextContainer: {
-    flex: 1,
-    marginRight: 10,
-  },
-  itemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E232C',
-  },
-  itemVicinity: {
-    fontSize: 14,
-    color: '#8391A1',
-    marginTop: 4,
-  },
-  fallbackList: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    maxHeight: '45%',
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    paddingTop: 12,
-  },
+  
+  // Loading/Error Styles
+  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' },
+  loaderText: { marginTop: 10, color: '#666' },
+  errorText: { fontSize: 16, color: 'red', textAlign: 'center', padding: 20 },
+  noPlacesText: { textAlign: 'center', marginTop: 20, color: '#999' },
 });
