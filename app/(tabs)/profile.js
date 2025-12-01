@@ -13,8 +13,10 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { auth } from '../../firebaseConfig'; // adjust path if needed
+// Ensure this path is correct
+import { auth, db } from '../../firebaseConfig'; 
 import { signOut } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore'; // Import Firestore functions
 import { router } from 'expo-router';
 
 // Reusable component for each menu item
@@ -36,15 +38,40 @@ const ProfileMenuItem = ({ icon, name, onPress, isLogout }) => {
 
 export default function ProfileScreen() {
   const [user, setUser] = useState(null);
+  // userData holds the profile details from Firestore
+  const [userData, setUserData] = useState(null); 
   const [loading, setLoading] = useState(true);
 
-  // Listen for auth state changes
+  // Listen for auth state changes AND Firestore updates
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
-      setLoading(false);
+      
+      if (currentUser) {
+        // If user is logged in, listen to their Firestore document in real-time
+        const userDocRef = doc(db, "users", currentUser.uid);
+        const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUserData(docSnap.data());
+          } else {
+            console.log("No user document found!");
+            setUserData(null);
+          }
+          setLoading(false);
+        }, (error) => {
+           console.error("Error fetching profile:", error);
+           setLoading(false);
+        });
+
+        return () => unsubscribeSnapshot(); // Cleanup Firestore listener
+      } else {
+        // No user, stop loading
+        setUserData(null);
+        setLoading(false);
+      }
     });
-    return unsubscribe;
+
+    return () => unsubscribeAuth(); // Cleanup Auth listener
   }, []);
 
   // Actual logout operation
@@ -75,7 +102,7 @@ export default function ProfileScreen() {
     {
       icon: 'person-outline',
       name: 'Manage Profile',
-      onPress: () => router.push('/manageprofile'), // create or change route as needed
+      onPress: () => router.push('/manageprofile'), 
     },
     {
       icon: 'medkit-outline',
@@ -131,44 +158,30 @@ export default function ProfileScreen() {
               <Text style={styles.logoutText}>Sign In</Text>
             </TouchableOpacity>
           </View>
-
-          <View style={styles.menuWrapper}>
-            {menuItems.map((item, index) => (
-              <ProfileMenuItem
-                key={index}
-                icon={item.icon}
-                name={item.name}
-                onPress={() => Alert.alert('Sign in required', 'Please sign in to access this feature.')}
-              />
-            ))}
-
-            <ProfileMenuItem
-              icon="log-out-outline"
-              name="Log Out"
-              onPress={() => Alert.alert('Not signed in', 'You are not signed in.')}
-              isLogout
-            />
-          </View>
         </ScrollView>
       </SafeAreaView>
     );
   }
 
-  // If user is signed in, show their profile details
+  // Determine display name and photo
+  // Prefer Firestore data (userData), fallback to Auth data, then default
+  const displayName = userData?.fullName || user.displayName || 'User';
+  const profileImage = userData?.profilePic 
+    ? { uri: userData.profilePic } 
+    : user.photoURL 
+      ? { uri: user.photoURL }
+      : { uri: 'https://cdn-icons-png.flaticon.com/512/149/149071.png' };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.profileHeader}>
           <Image
-            source={{
-              uri: user.photoURL
-                ? user.photoURL
-                : 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-            }}
+            source={profileImage}
             style={styles.profileImage}
           />
-          <Text style={styles.profileName}>{user.displayName || 'User'}</Text>
+          <Text style={styles.profileName}>{displayName}</Text>
           <Text style={styles.profileEmail}>{user.email}</Text>
         </View>
 
