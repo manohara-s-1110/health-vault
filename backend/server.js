@@ -60,7 +60,7 @@ app.post('/process-report', upload.single('reportFile'), async (req, res) => {
         console.log("Azure OCR successful.");
 
 
-        // --- ✨ NEW: Sanitize and truncate the text for Hugging Face ---
+        // --- NEW: Sanitize and truncate the text for Hugging Face ---
         let textToSummarize = extractedText.trim(); // Remove leading/trailing whitespace
         if (textToSummarize.length === 0) {
             throw new Error("Extracted text was only whitespace.");
@@ -73,14 +73,13 @@ app.post('/process-report', upload.single('reportFile'), async (req, res) => {
             console.log(`Truncating text from ${textToSummarize.length} to ${MAX_TEXT_LENGTH} chars.`);
             textToSummarize = textToSummarize.substring(0, MAX_TEXT_LENGTH);
         }
-        // --- END OF NEW LOGIC ---
 
 
         // --- STEP 2: SUMMARIZATION with Hugging Face ---
         console.log("Generating summary with Hugging Face...");
         
-        const hfUrl = 'https://router.huggingface.co/hf-inference/models/facebook/bart-large-cnn';
-        
+        // Using a faster, lighter model to avoid timeouts
+        const hfUrl = 'https://router.huggingface.co/hf-inference/models/sshleifer/distilbart-cnn-12-6';        
         const response = await axios.post(hfUrl, 
             { inputs: textToSummarize }, // <-- Use the new truncated variable
             { headers: { 'Authorization': `Bearer ${hfKey}` } }
