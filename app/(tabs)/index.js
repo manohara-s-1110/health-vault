@@ -124,7 +124,6 @@ export default function App() {
             </View>
             <View>
               <Text style={styles.reportTitle}>Latest Report</Text>
-              <Text style={styles.reportSubtitle}>Blood Test • 25 Nov</Text>
             </View>
           </View>
           <Text style={styles.arrowIcon}>›</Text>
